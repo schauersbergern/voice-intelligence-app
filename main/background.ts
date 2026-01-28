@@ -1,6 +1,7 @@
 import path from 'path';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { IPC_CHANNELS } from '../shared/types';
+import { IPC_CHANNELS, type WhisperMode } from '../shared/types';
+import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
 
 const isDev = !app.isPackaged;
 
@@ -16,8 +17,22 @@ function registerIpcHandlers(): void {
     });
 
     ipcMain.handle(IPC_CHANNELS.SEND_AUDIO, async (_event, audioData: ArrayBuffer) => {
-        // Log audio receipt (Mission 4 will add transcription here)
         console.log(`Received audio: ${audioData.byteLength} bytes`);
+        const result = await transcribe(Buffer.from(audioData));
+        console.log(`Transcription complete: "${result.text.substring(0, 50)}..." (${result.duration.toFixed(2)}s)`);
+        return result;
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SET_WHISPER_MODE, async (_event, mode: WhisperMode) => {
+        setWhisperMode(mode);
+    });
+
+    ipcMain.handle(IPC_CHANNELS.GET_WHISPER_MODE, async () => {
+        return getWhisperMode();
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SET_API_KEY, async (_event, key: string) => {
+        setApiKey(key);
     });
 }
 
@@ -28,7 +43,7 @@ function registerIpcHandlers(): void {
 function createWindow(): void {
     mainWindow = new BrowserWindow({
         width: 400,
-        height: 600,
+        height: 700,
         resizable: true,
         center: true,
         title: 'Voice Intelligence',
