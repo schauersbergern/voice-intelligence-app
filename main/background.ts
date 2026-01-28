@@ -1,7 +1,8 @@
 import path from 'path';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { IPC_CHANNELS, type WhisperMode } from '../shared/types';
+import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type LLMProvider } from '../shared/types';
 import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
+import { enrich, setEnrichmentMode, getEnrichmentMode, setLLMProvider } from './enrichment';
 import { setMainWindow } from './window-manager';
 import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
 
@@ -21,9 +22,22 @@ function registerIpcHandlers(): void {
 
     ipcMain.handle(IPC_CHANNELS.SEND_AUDIO, async (_event, audioData: ArrayBuffer) => {
         console.log(`Received audio: ${audioData.byteLength} bytes`);
-        const result = await transcribe(Buffer.from(audioData));
-        console.log(`Transcription complete: "${result.text.substring(0, 50)}..." (${result.duration.toFixed(2)}s)`);
-        return result;
+
+        // Step 1: Transcribe audio
+        const transcriptionResult = await transcribe(Buffer.from(audioData));
+        console.log(`Transcription complete: "${transcriptionResult.text.substring(0, 50)}..." (${transcriptionResult.duration.toFixed(2)}s)`);
+
+        // Step 2: Enrich transcription with LLM
+        const { enrichedText, wasEnriched } = await enrich(transcriptionResult.text);
+        if (wasEnriched) {
+            console.log(`Enrichment complete: "${enrichedText.substring(0, 50)}..."`);
+        }
+
+        return {
+            ...transcriptionResult,
+            enrichedText,
+            wasEnriched,
+        };
     });
 
     ipcMain.handle(IPC_CHANNELS.SET_WHISPER_MODE, async (_event, mode: WhisperMode) => {
@@ -45,6 +59,18 @@ function registerIpcHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.SET_RECORDING_STATE, async (_event, recording: boolean) => {
         isRecording = recording;
     });
+
+    ipcMain.handle(IPC_CHANNELS.SET_ENRICHMENT_MODE, async (_event, mode: EnrichmentMode) => {
+        setEnrichmentMode(mode);
+    });
+
+    ipcMain.handle(IPC_CHANNELS.GET_ENRICHMENT_MODE, async () => {
+        return getEnrichmentMode();
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SET_LLM_PROVIDER, async (_event, provider: LLMProvider, apiKey: string) => {
+        setLLMProvider(provider, apiKey);
+    });
 }
 
 // ============================================================================
@@ -53,8 +79,8 @@ function registerIpcHandlers(): void {
 
 function createWindow(): void {
     const mainWindow = new BrowserWindow({
-        width: 400,
-        height: 700,
+        width: 450,
+        height: 750,
         resizable: true,
         center: true,
         title: 'Voice Intelligence',

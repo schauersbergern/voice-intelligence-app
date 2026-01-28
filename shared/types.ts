@@ -15,6 +15,9 @@ export const IPC_CHANNELS = {
     TOGGLE_RECORDING: 'recording:toggle',
     GET_RECORDING_STATE: 'recording:get-state',
     SET_RECORDING_STATE: 'recording:set-state',
+    SET_ENRICHMENT_MODE: 'enrichment:set-mode',
+    GET_ENRICHMENT_MODE: 'enrichment:get-mode',
+    SET_LLM_PROVIDER: 'enrichment:set-provider',
 } as const;
 
 // ============================================================================
@@ -27,9 +30,28 @@ export type WhisperMode = 'local' | 'api';
 /** Result from transcription */
 export interface TranscriptionResult {
     text: string;
+    enrichedText: string;
+    wasEnriched: boolean;
     duration: number;
     mode: WhisperMode;
 }
+
+/** Raw result from whisper transcription (before enrichment) */
+export interface RawTranscriptionResult {
+    text: string;
+    duration: number;
+    mode: WhisperMode;
+}
+
+// ============================================================================
+// Enrichment Types
+// ============================================================================
+
+/** LLM enrichment processing modes */
+export type EnrichmentMode = 'clean' | 'format' | 'summarize' | 'action' | 'email' | 'notes' | 'none';
+
+/** LLM provider options */
+export type LLMProvider = 'openai' | 'anthropic';
 
 // ============================================================================
 // IPC API Interface
@@ -87,4 +109,19 @@ export interface ElectronAPI {
      * @param isRecording - Whether recording is active
      */
     setRecordingState: (isRecording: boolean) => Promise<void>;
+
+    /**
+     * Set the LLM enrichment mode.
+     */
+    setEnrichmentMode: (mode: EnrichmentMode) => Promise<void>;
+
+    /**
+     * Get the current enrichment mode.
+     */
+    getEnrichmentMode: () => Promise<EnrichmentMode>;
+
+    /**
+     * Set the LLM provider and API key.
+     */
+    setLLMProvider: (provider: LLMProvider, apiKey: string) => Promise<void>;
 }

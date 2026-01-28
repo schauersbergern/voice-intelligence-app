@@ -3,7 +3,7 @@
  * Routes transcription to local whisper.cpp or OpenAI API based on mode
  */
 
-import type { WhisperMode, TranscriptionResult } from '../shared/types';
+import type { WhisperMode, RawTranscriptionResult } from '../shared/types';
 import { transcribeLocal, isModelAvailable } from './whisper-local';
 import { transcribeWithAPI } from './whisper-api';
 
@@ -62,7 +62,7 @@ export async function isReady(): Promise<{ ready: boolean; message?: string }> {
  * @param audioBuffer - WAV audio buffer (16kHz mono 16-bit PCM)
  * @returns Transcription result
  */
-export async function transcribe(audioBuffer: Buffer): Promise<TranscriptionResult> {
+export async function transcribe(audioBuffer: Buffer): Promise<RawTranscriptionResult> {
     const startTime = Date.now();
 
     // Check if ready
