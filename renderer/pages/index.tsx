@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import type { WhisperMode, TranscriptionResult } from '../../shared/types';
@@ -11,6 +11,11 @@ export default function Home(): JSX.Element {
     const [whisperMode, setWhisperModeState] = useState<WhisperMode>('api');
     const [apiKey, setApiKeyState] = useState('');
     const [showSettings, setShowSettings] = useState(false);
+    const [hotkeyTriggered, setHotkeyTriggered] = useState(false);
+
+    // Ref to track recording state for hotkey handler
+    const stateRef = useRef(state);
+    stateRef.current = state;
 
     // Load current mode on mount
     useEffect(() => {
@@ -18,6 +23,30 @@ export default function Home(): JSX.Element {
             window.electronAPI.getWhisperMode().then(setWhisperModeState).catch(() => { });
         }
     }, []);
+
+    // Listen for global hotkey toggle
+    useEffect(() => {
+        if (!window.electronAPI) return;
+
+        const cleanup = window.electronAPI.onRecordingToggle(() => {
+            setHotkeyTriggered(true);
+        });
+
+        return cleanup;
+    }, []);
+
+    // Handle hotkey toggle
+    useEffect(() => {
+        if (hotkeyTriggered) {
+            setHotkeyTriggered(false);
+            // Trigger the toggle action
+            if (stateRef.current === 'idle' || stateRef.current === 'error') {
+                handleStartRecording();
+            } else if (stateRef.current === 'recording') {
+                handleStopRecording();
+            }
+        }
+    }, [hotkeyTriggered]);
 
     // Format duration as MM:SS
     const formatDuration = (seconds: number): string => {
@@ -40,32 +69,50 @@ export default function Home(): JSX.Element {
         }
     };
 
+    const handleStartRecording = useCallback(async () => {
+        setTranscription(null);
+        setError(null);
+        await startRecording();
+        // Sync state with main process
+        if (window.electronAPI) {
+            window.electronAPI.setRecordingState(true).catch(() => { });
+        }
+    }, [startRecording]);
+
+    const handleStopRecording = useCallback(async () => {
+        setError(null);
+        const audioData = await stopRecording();
+
+        // Sync state with main process
+        if (window.electronAPI) {
+            window.electronAPI.setRecordingState(false).catch(() => { });
+        }
+
+        if (audioData) {
+            if (!window.electronAPI) {
+                setError('Electron API not available');
+                return;
+            }
+
+            setTranscribing(true);
+            try {
+                const result = await window.electronAPI.sendAudioForTranscription(audioData);
+                setTranscription(result);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Transcription failed');
+            } finally {
+                setTranscribing(false);
+            }
+        }
+    }, [stopRecording]);
+
     const handleRecordClick = useCallback(async () => {
         if (state === 'recording') {
-            setError(null);
-            const audioData = await stopRecording();
-            if (audioData) {
-                if (!window.electronAPI) {
-                    setError('Electron API not available');
-                    return;
-                }
-
-                setTranscribing(true);
-                try {
-                    const result = await window.electronAPI.sendAudioForTranscription(audioData);
-                    setTranscription(result);
-                } catch (err) {
-                    setError(err instanceof Error ? err.message : 'Transcription failed');
-                } finally {
-                    setTranscribing(false);
-                }
-            }
+            await handleStopRecording();
         } else if (state === 'idle' || state === 'error') {
-            setTranscription(null);
-            setError(null);
-            await startRecording();
+            await handleStartRecording();
         }
-    }, [state, startRecording, stopRecording]);
+    }, [state, handleStartRecording, handleStopRecording]);
 
     const isRecording = state === 'recording';
     const isProcessing = state === 'processing' || transcribing;

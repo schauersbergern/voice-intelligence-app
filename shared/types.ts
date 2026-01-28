@@ -12,6 +12,9 @@ export const IPC_CHANNELS = {
     SET_WHISPER_MODE: 'whisper:set-mode',
     SET_API_KEY: 'settings:set-api-key',
     GET_WHISPER_MODE: 'whisper:get-mode',
+    TOGGLE_RECORDING: 'recording:toggle',
+    GET_RECORDING_STATE: 'recording:get-state',
+    SET_RECORDING_STATE: 'recording:set-state',
 } as const;
 
 // ============================================================================
@@ -66,4 +69,22 @@ export interface ElectronAPI {
      * @param key - OpenAI API key
      */
     setApiKey: (key: string) => Promise<void>;
+
+    /**
+     * Listen for recording toggle events from global hotkey.
+     * @param callback - Function called when toggle is triggered
+     * @returns Cleanup function to remove listener
+     */
+    onRecordingToggle: (callback: () => void) => () => void;
+
+    /**
+     * Get the current recording state from main process.
+     */
+    getRecordingState: () => Promise<boolean>;
+
+    /**
+     * Set the recording state in main process.
+     * @param isRecording - Whether recording is active
+     */
+    setRecordingState: (isRecording: boolean) => Promise<void>;
 }

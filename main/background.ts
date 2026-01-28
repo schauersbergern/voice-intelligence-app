@@ -2,10 +2,13 @@ import path from 'path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { IPC_CHANNELS, type WhisperMode } from '../shared/types';
 import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
+import { setMainWindow } from './window-manager';
+import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
 
 const isDev = !app.isPackaged;
 
-let mainWindow: BrowserWindow | null = null;
+// Recording state tracked in main process for hotkey coordination
+let isRecording = false;
 
 // ============================================================================
 // IPC Handlers
@@ -34,6 +37,14 @@ function registerIpcHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.SET_API_KEY, async (_event, key: string) => {
         setApiKey(key);
     });
+
+    ipcMain.handle(IPC_CHANNELS.GET_RECORDING_STATE, async () => {
+        return isRecording;
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SET_RECORDING_STATE, async (_event, recording: boolean) => {
+        isRecording = recording;
+    });
 }
 
 // ============================================================================
@@ -41,7 +52,7 @@ function registerIpcHandlers(): void {
 // ============================================================================
 
 function createWindow(): void {
-    mainWindow = new BrowserWindow({
+    const mainWindow = new BrowserWindow({
         width: 400,
         height: 700,
         resizable: true,
@@ -54,6 +65,9 @@ function createWindow(): void {
         },
     });
 
+    // Store reference in window manager
+    setMainWindow(mainWindow);
+
     const url = isDev
         ? 'http://localhost:8888'
         : `file://${path.join(__dirname, '../renderer/out/index.html')}`;
@@ -61,7 +75,7 @@ function createWindow(): void {
     mainWindow.loadURL(url);
 
     mainWindow.on('closed', () => {
-        mainWindow = null;
+        setMainWindow(null);
     });
 
     // Open DevTools in development
@@ -77,6 +91,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
     registerIpcHandlers();
     createWindow();
+    registerGlobalShortcuts();
+});
+
+app.on('will-quit', () => {
+    unregisterAllShortcuts();
 });
 
 app.on('window-all-closed', () => {
@@ -88,7 +107,8 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
     // On macOS, re-create window when dock icon clicked and no windows exist
-    if (mainWindow === null) {
+    const { getMainWindow } = require('./window-manager');
+    if (getMainWindow() === null) {
         createWindow();
     }
 });
