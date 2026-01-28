@@ -102,7 +102,7 @@ function createWindow(): void {
 
     const url = isDev
         ? 'http://localhost:8888'
-        : `file://${path.join(__dirname, '../renderer/out/index.html')}`;
+        : `file://${path.join(__dirname, 'index.html')}`;
 
     mainWindow.loadURL(url);
 

@@ -44,13 +44,28 @@
     padding: 0;
 }
 
-html, body {
+html,
+body {
     font-family: var(--font-sans);
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* Make title bar draggable */
+body {
+    -webkit-app-region: drag;
+}
+
+/* Make interactive elements clickable */
+button,
+input,
+select,
+a,
+[role="button"] {
+    -webkit-app-region: no-drag;
 }
 
 /* Scrollbar styling */
@@ -79,10 +94,13 @@ html, body {
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
     }
+
     50% {
         transform: scale(1.02);
         box-shadow: 0 4px 30px rgba(239, 68, 68, 0.6);
@@ -90,9 +108,12 @@ html, body {
 }
 
 @keyframes recordingDot {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
