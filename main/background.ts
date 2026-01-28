@@ -81,9 +81,15 @@ function createWindow(): void {
     const mainWindow = new BrowserWindow({
         width: 450,
         height: 750,
+        minWidth: 320,
+        minHeight: 450,
+        maxWidth: 600,
+        maxHeight: 850,
         resizable: true,
         center: true,
         title: 'Voice Intelligence',
+        titleBarStyle: 'hiddenInset',
+        vibrancy: 'under-window',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,

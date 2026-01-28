@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { RecordButton } from '../components/RecordButton';
+import { TranscriptDisplay } from '../components/TranscriptDisplay';
 import type { WhisperMode, TranscriptionResult, EnrichmentMode, LLMProvider } from '../../shared/types';
 
 export default function Home(): JSX.Element {
@@ -20,7 +22,7 @@ export default function Home(): JSX.Element {
     const stateRef = useRef(state);
     stateRef.current = state;
 
-    // Load current modes on mount
+    // Load settings on mount
     useEffect(() => {
         if (window.electronAPI) {
             window.electronAPI.getWhisperMode().then(setWhisperModeState).catch(() => { });
@@ -31,11 +33,7 @@ export default function Home(): JSX.Element {
     // Listen for global hotkey toggle
     useEffect(() => {
         if (!window.electronAPI) return;
-
-        const cleanup = window.electronAPI.onRecordingToggle(() => {
-            setHotkeyTriggered(true);
-        });
-
+        const cleanup = window.electronAPI.onRecordingToggle(() => setHotkeyTriggered(true));
         return cleanup;
     }, []);
 
@@ -51,7 +49,20 @@ export default function Home(): JSX.Element {
         }
     }, [hotkeyTriggered]);
 
-    // Format duration as MM:SS
+    // Keyboard shortcut: Cmd+C to copy result
+    useEffect(() => {
+        const displayText = transcription?.wasEnriched ? transcription.enrichedText : transcription?.text;
+        if (!displayText) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'c' && !window.getSelection()?.toString()) {
+                navigator.clipboard.writeText(displayText);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [transcription]);
+
     const formatDuration = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -60,55 +71,40 @@ export default function Home(): JSX.Element {
 
     const handleModeChange = async (mode: WhisperMode) => {
         setWhisperModeState(mode);
-        if (window.electronAPI) {
-            await window.electronAPI.setWhisperMode(mode);
-        }
+        window.electronAPI?.setWhisperMode(mode);
     };
 
     const handleApiKeyChange = async (key: string) => {
         setApiKeyState(key);
-        if (window.electronAPI && key.trim()) {
-            await window.electronAPI.setApiKey(key);
-        }
+        if (key.trim()) window.electronAPI?.setApiKey(key);
     };
 
     const handleEnrichmentModeChange = async (mode: EnrichmentMode) => {
         setEnrichmentModeState(mode);
-        if (window.electronAPI) {
-            await window.electronAPI.setEnrichmentMode(mode);
-        }
+        window.electronAPI?.setEnrichmentMode(mode);
     };
 
     const handleLlmProviderChange = async (provider: LLMProvider) => {
         setLlmProviderState(provider);
-        if (window.electronAPI && llmApiKey.trim()) {
-            await window.electronAPI.setLLMProvider(provider, llmApiKey);
-        }
+        if (llmApiKey.trim()) window.electronAPI?.setLLMProvider(provider, llmApiKey);
     };
 
     const handleLlmApiKeyChange = async (key: string) => {
         setLlmApiKeyState(key);
-        if (window.electronAPI && key.trim()) {
-            await window.electronAPI.setLLMProvider(llmProvider, key);
-        }
+        if (key.trim()) window.electronAPI?.setLLMProvider(llmProvider, key);
     };
 
     const handleStartRecording = useCallback(async () => {
         setTranscription(null);
         setError(null);
         await startRecording();
-        if (window.electronAPI) {
-            window.electronAPI.setRecordingState(true).catch(() => { });
-        }
+        window.electronAPI?.setRecordingState(true).catch(() => { });
     }, [startRecording]);
 
     const handleStopRecording = useCallback(async () => {
         setError(null);
         const audioData = await stopRecording();
-
-        if (window.electronAPI) {
-            window.electronAPI.setRecordingState(false).catch(() => { });
-        }
+        window.electronAPI?.setRecordingState(false).catch(() => { });
 
         if (audioData) {
             if (!window.electronAPI) {
@@ -138,16 +134,6 @@ export default function Home(): JSX.Element {
 
     const isRecording = state === 'recording';
     const isProcessing = state === 'processing' || transcribing;
-
-    const getButtonConfig = () => {
-        if (isRecording) return { text: 'Stop', style: styles.stopButton };
-        if (isProcessing) return { text: 'Processing...', style: styles.processingButton };
-        return { text: 'Record', style: styles.recordButton };
-    };
-
-    const buttonConfig = getButtonConfig();
-
-    // Determine which text to display: enriched or raw
     const displayText = transcription?.wasEnriched ? transcription.enrichedText : transcription?.text;
 
     return (
@@ -167,128 +153,118 @@ export default function Home(): JSX.Element {
                 <div style={styles.status}>
                     <span style={isRecording ? styles.recordingDot : styles.idleDot} />
                     <span>
-                        {isRecording
-                            ? formatDuration(duration)
-                            : isProcessing
-                                ? 'Transcribing & Enhancing'
-                                : 'Idle'
-                        }
+                        {isRecording ? formatDuration(duration) : isProcessing ? 'Transcribing & Enhancing' : 'Idle'}
                     </span>
                 </div>
 
-                {/* Record/Stop button */}
+                {/* Record Button */}
                 <div style={styles.controlSection}>
-                    <button
-                        style={{ ...buttonConfig.style, ...(isProcessing ? styles.disabledButton : {}) }}
+                    <RecordButton
+                        isRecording={isRecording}
+                        isProcessing={isProcessing}
                         onClick={handleRecordClick}
-                        disabled={isProcessing}
-                    >
-                        {buttonConfig.text}
-                    </button>
+                        processingText={transcribing ? '✨ Processing...' : 'Processing...'}
+                    />
+                    <span style={styles.hint}>Press Enter or ⌘+Shift+Space</span>
                 </div>
 
-                {/* Result display */}
-                {transcription && !error && (
-                    <div style={styles.transcriptionBox}>
-                        <p style={styles.transcriptionText}>{displayText}</p>
-                        <p style={styles.transcriptionMeta}>
-                            {transcription.mode === 'api' ? '☁️ API' : '💻 Local'}
-                            {transcription.wasEnriched && ` • ✨ ${enrichmentMode}`}
-                            {' • '}{transcription.duration.toFixed(1)}s
-                        </p>
-                    </div>
+                {/* Transcript Result */}
+                {displayText && !error && (
+                    <TranscriptDisplay
+                        text={displayText}
+                        wasEnriched={transcription?.wasEnriched}
+                        enrichmentMode={enrichmentMode}
+                        transcriptionMode={transcription?.mode}
+                        duration={transcription?.duration}
+                    />
                 )}
 
-                {/* Error messages */}
+                {/* Error */}
                 {(error || recordError) && (
                     <p style={styles.error}>{error || recordError}</p>
                 )}
 
-                {/* Settings toggle */}
-                <button
-                    style={styles.settingsToggle}
-                    onClick={() => setShowSettings(!showSettings)}
-                >
-                    {showSettings ? '▲ Hide Settings' : '▼ Settings'}
+                {/* Settings Toggle */}
+                <button style={styles.settingsToggle} onClick={() => setShowSettings(!showSettings)}>
+                    {showSettings ? '▲ Hide Settings' : '⚙️ Settings'}
                 </button>
 
-                {/* Settings panel */}
+                {/* Settings Panel */}
                 {showSettings && (
                     <div style={styles.settingsPanel}>
-                        <h3 style={styles.settingsHeader}>Transcription</h3>
-                        <div style={styles.settingRow}>
-                            <label style={styles.settingLabel}>Whisper:</label>
-                            <select
-                                style={styles.select}
-                                value={whisperMode}
-                                onChange={(e) => handleModeChange(e.target.value as WhisperMode)}
-                            >
-                                <option value="api">☁️ OpenAI API</option>
-                                <option value="local">💻 Local</option>
-                            </select>
-                        </div>
-
-                        {whisperMode === 'api' && (
+                        <div style={styles.settingsSection}>
+                            <h3 style={styles.sectionTitle}>🎙 Transcription</h3>
                             <div style={styles.settingRow}>
-                                <label style={styles.settingLabel}>API Key:</label>
-                                <input
-                                    type="password"
-                                    style={styles.input}
-                                    placeholder="sk-..."
-                                    value={apiKey}
-                                    onChange={(e) => handleApiKeyChange(e.target.value)}
-                                />
+                                <label style={styles.label}>Engine:</label>
+                                <select
+                                    style={styles.select}
+                                    value={whisperMode}
+                                    onChange={(e) => handleModeChange(e.target.value as WhisperMode)}
+                                >
+                                    <option value="api">☁️ OpenAI Whisper API</option>
+                                    <option value="local">💻 Local (whisper.cpp)</option>
+                                </select>
                             </div>
-                        )}
-
-                        <h3 style={styles.settingsHeader}>Enrichment</h3>
-                        <div style={styles.settingRow}>
-                            <label style={styles.settingLabel}>Mode:</label>
-                            <select
-                                style={styles.select}
-                                value={enrichmentMode}
-                                onChange={(e) => handleEnrichmentModeChange(e.target.value as EnrichmentMode)}
-                            >
-                                <option value="none">🔇 None (raw)</option>
-                                <option value="clean">🧹 Clean</option>
-                                <option value="format">📝 Format</option>
-                                <option value="summarize">📋 Summarize</option>
-                                <option value="action">✅ Action Items</option>
-                                <option value="email">✉️ Email</option>
-                                <option value="notes">📒 Notes</option>
-                            </select>
-                        </div>
-
-                        {enrichmentMode !== 'none' && (
-                            <>
+                            {whisperMode === 'api' && (
                                 <div style={styles.settingRow}>
-                                    <label style={styles.settingLabel}>LLM:</label>
-                                    <select
-                                        style={styles.select}
-                                        value={llmProvider}
-                                        onChange={(e) => handleLlmProviderChange(e.target.value as LLMProvider)}
-                                    >
-                                        <option value="openai">OpenAI (gpt-4o-mini)</option>
-                                        <option value="anthropic">Anthropic (claude-3-haiku)</option>
-                                    </select>
-                                </div>
-
-                                <div style={styles.settingRow}>
-                                    <label style={styles.settingLabel}>LLM Key:</label>
+                                    <label style={styles.label}>API Key:</label>
                                     <input
                                         type="password"
                                         style={styles.input}
-                                        placeholder={llmProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-                                        value={llmApiKey}
-                                        onChange={(e) => handleLlmApiKeyChange(e.target.value)}
+                                        placeholder="sk-..."
+                                        value={apiKey}
+                                        onChange={(e) => handleApiKeyChange(e.target.value)}
                                     />
                                 </div>
-                            </>
-                        )}
+                            )}
+                        </div>
 
-                        <p style={styles.hint}>
-                            ⌘+Shift+Space to toggle recording from anywhere
-                        </p>
+                        <div style={styles.settingsSection}>
+                            <h3 style={styles.sectionTitle}>✨ Enrichment</h3>
+                            <div style={styles.settingRow}>
+                                <label style={styles.label}>Mode:</label>
+                                <select
+                                    style={styles.select}
+                                    value={enrichmentMode}
+                                    onChange={(e) => handleEnrichmentModeChange(e.target.value as EnrichmentMode)}
+                                >
+                                    <option value="none">🔇 None (raw)</option>
+                                    <option value="clean">🧹 Clean</option>
+                                    <option value="format">📝 Format</option>
+                                    <option value="summarize">📋 Summarize</option>
+                                    <option value="action">✅ Action Items</option>
+                                    <option value="email">✉️ Email</option>
+                                    <option value="notes">📒 Notes</option>
+                                </select>
+                            </div>
+                            {enrichmentMode !== 'none' && (
+                                <>
+                                    <div style={styles.settingRow}>
+                                        <label style={styles.label}>LLM:</label>
+                                        <select
+                                            style={styles.select}
+                                            value={llmProvider}
+                                            onChange={(e) => handleLlmProviderChange(e.target.value as LLMProvider)}
+                                        >
+                                            <option value="openai">OpenAI (gpt-4o-mini)</option>
+                                            <option value="anthropic">Anthropic (claude-3-haiku)</option>
+                                        </select>
+                                    </div>
+                                    <div style={styles.settingRow}>
+                                        <label style={styles.label}>LLM Key:</label>
+                                        <input
+                                            type="password"
+                                            style={styles.input}
+                                            placeholder={llmProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+                                            value={llmApiKey}
+                                            onChange={(e) => handleLlmApiKeyChange(e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <p style={styles.hotkeyHint}>⌘+Shift+Space to toggle recording from anywhere</p>
                     </div>
                 )}
             </main>
@@ -301,178 +277,134 @@ const styles: Record<string, React.CSSProperties> = {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'flex-start',
         minHeight: '100vh',
-        padding: '2rem 1rem',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        backgroundColor: '#1a1a2e',
-        color: '#eaeaea',
+        padding: '2rem 1.5rem',
     },
     title: {
-        fontSize: '2rem',
-        fontWeight: 600,
-        marginBottom: '0.5rem',
+        fontSize: '1.75rem',
+        fontWeight: 700,
+        marginBottom: '0.25rem',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
     },
     subtitle: {
-        fontSize: '1rem',
-        color: '#8a8a9a',
+        fontSize: '0.95rem',
+        color: 'var(--color-text-secondary)',
         marginBottom: '1.5rem',
     },
     status: {
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem',
-        padding: '0.5rem 1rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: '2rem',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '0.5rem 1.25rem',
+        backgroundColor: 'var(--color-bg-glass)',
+        borderRadius: 'var(--radius-full)',
+        border: '1px solid var(--color-border)',
         marginBottom: '1.5rem',
+        fontSize: '0.9rem',
     },
     idleDot: {
         width: '8px',
         height: '8px',
         borderRadius: '50%',
-        backgroundColor: '#4ade80',
+        backgroundColor: 'var(--color-success)',
     },
     recordingDot: {
         width: '8px',
         height: '8px',
         borderRadius: '50%',
-        backgroundColor: '#ef4444',
+        backgroundColor: 'var(--color-error)',
+        animation: 'recordingDot 1s ease-in-out infinite',
     },
     controlSection: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '1rem',
+        gap: '0.75rem',
         marginBottom: '1.5rem',
     },
-    recordButton: {
-        padding: '1rem 2rem',
-        fontSize: '1rem',
-        fontWeight: 600,
-        color: '#fff',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        border: 'none',
-        borderRadius: '0.5rem',
-        cursor: 'pointer',
-        minWidth: '160px',
-    },
-    stopButton: {
-        padding: '1rem 2rem',
-        fontSize: '1rem',
-        fontWeight: 600,
-        color: '#fff',
-        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        border: 'none',
-        borderRadius: '0.5rem',
-        cursor: 'pointer',
-        minWidth: '160px',
-    },
-    processingButton: {
-        padding: '1rem 2rem',
-        fontSize: '1rem',
-        fontWeight: 600,
-        color: '#fff',
-        background: '#6b7280',
-        border: 'none',
-        borderRadius: '0.5rem',
-        minWidth: '160px',
-    },
-    disabledButton: {
-        opacity: 0.7,
-        cursor: 'not-allowed',
-    },
-    transcriptionBox: {
-        width: '100%',
-        maxWidth: '380px',
-        padding: '1rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: '0.5rem',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        marginBottom: '1rem',
-    },
-    transcriptionText: {
-        fontSize: '1rem',
-        lineHeight: 1.5,
-        color: '#eaeaea',
-        margin: 0,
-        marginBottom: '0.5rem',
-        whiteSpace: 'pre-wrap',
-    },
-    transcriptionMeta: {
-        fontSize: '0.8rem',
-        color: '#8a8a9a',
-        margin: 0,
+    hint: {
+        fontSize: '0.75rem',
+        color: 'var(--color-text-muted)',
     },
     error: {
-        color: '#f87171',
+        color: 'var(--color-error)',
         fontSize: '0.9rem',
-        maxWidth: '300px',
+        maxWidth: '340px',
         textAlign: 'center',
         marginBottom: '1rem',
+        padding: '0.75rem 1rem',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid rgba(239, 68, 68, 0.2)',
     },
     settingsToggle: {
         background: 'none',
         border: 'none',
-        color: '#8a8a9a',
+        color: 'var(--color-text-secondary)',
         cursor: 'pointer',
         fontSize: '0.85rem',
         marginTop: '1rem',
+        padding: '0.5rem 1rem',
+        borderRadius: 'var(--radius-md)',
+        transition: 'var(--transition-fast)',
     },
     settingsPanel: {
         width: '100%',
-        maxWidth: '380px',
+        maxWidth: '400px',
         padding: '1rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: '0.5rem',
+        backgroundColor: 'var(--color-bg-glass)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--color-border)',
         marginTop: '0.5rem',
     },
-    settingsHeader: {
-        fontSize: '0.9rem',
+    settingsSection: {
+        marginBottom: '1rem',
+    },
+    sectionTitle: {
+        fontSize: '0.85rem',
         fontWeight: 600,
-        color: '#8a8a9a',
-        margin: '0.5rem 0',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        paddingBottom: '0.25rem',
+        color: 'var(--color-text-secondary)',
+        marginBottom: '0.75rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid var(--color-border)',
     },
     settingRow: {
         display: 'flex',
         alignItems: 'center',
-        gap: '0.5rem',
+        gap: '0.75rem',
         marginBottom: '0.75rem',
     },
-    settingLabel: {
-        fontSize: '0.9rem',
-        color: '#8a8a9a',
-        minWidth: '70px',
+    label: {
+        fontSize: '0.85rem',
+        color: 'var(--color-text-secondary)',
+        minWidth: '65px',
     },
     select: {
         flex: 1,
-        padding: '0.5rem',
-        backgroundColor: '#2a2a3e',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '0.25rem',
-        color: '#eaeaea',
-        fontSize: '0.9rem',
+        padding: '0.5rem 0.75rem',
+        backgroundColor: 'var(--color-bg-secondary)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)',
+        color: 'var(--color-text-primary)',
+        fontSize: '0.85rem',
     },
     input: {
         flex: 1,
-        padding: '0.5rem',
-        backgroundColor: '#2a2a3e',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '0.25rem',
-        color: '#eaeaea',
-        fontSize: '0.9rem',
+        padding: '0.5rem 0.75rem',
+        backgroundColor: 'var(--color-bg-secondary)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)',
+        color: 'var(--color-text-primary)',
+        fontSize: '0.85rem',
     },
-    hint: {
-        fontSize: '0.8rem',
-        color: '#6b7280',
+    hotkeyHint: {
+        fontSize: '0.75rem',
+        color: 'var(--color-text-muted)',
         fontStyle: 'italic',
         margin: 0,
         marginTop: '0.5rem',
+        textAlign: 'center',
     },
 };
