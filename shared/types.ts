@@ -8,9 +8,8 @@
 /** IPC channel names as const for type safety */
 export const IPC_CHANNELS = {
     PING: 'app:ping',
-    // Future channels (Mission 3+):
-    // AUDIO_START: 'audio:start-recording',
-    // AUDIO_STOP: 'audio:stop-recording',
+    SEND_AUDIO: 'audio:send-for-transcription',
+    // Future channels (Mission 4+):
     // WHISPER_TRANSCRIBE: 'whisper:transcribe',
     // SETTINGS_GET: 'settings:get',
     // SETTINGS_SET: 'settings:set',
@@ -31,18 +30,22 @@ export interface ElectronAPI {
      */
     ping: () => Promise<string>;
 
-    // Future methods (Mission 3+):
-    // startRecording: () => Promise<void>;
-    // stopRecording: () => Promise<AudioBuffer>;
-    // transcribe: (audio: ArrayBuffer) => Promise<TranscriptionResult>;
+    /**
+     * Send audio data to main process for transcription.
+     * @param audioData - WAV audio as ArrayBuffer (16kHz mono 16-bit PCM)
+     * @returns Promise resolving when audio is received
+     */
+    sendAudioForTranscription: (audioData: ArrayBuffer) => Promise<void>;
 }
 
 // ============================================================================
-// Domain Types (placeholder for future missions)
+// Domain Types
 // ============================================================================
 
+// Future types for Mission 4+:
 // export interface TranscriptionResult {
 //   text: string;
 //   confidence: number;
 //   segments?: TranscriptionSegment[];
 // }
+

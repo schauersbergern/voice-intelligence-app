@@ -14,6 +14,11 @@ function registerIpcHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.PING, async () => {
         return 'pong';
     });
+
+    ipcMain.handle(IPC_CHANNELS.SEND_AUDIO, async (_event, audioData: ArrayBuffer) => {
+        // Log audio receipt (Mission 4 will add transcription here)
+        console.log(`Received audio: ${audioData.byteLength} bytes`);
+    });
 }
 
 // ============================================================================

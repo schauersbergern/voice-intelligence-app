@@ -8,6 +8,8 @@ import { IPC_CHANNELS, type ElectronAPI } from '../shared/types';
 // Implement all API methods with explicit channel binding
 const api: ElectronAPI = {
     ping: () => ipcRenderer.invoke(IPC_CHANNELS.PING),
+    sendAudioForTranscription: (audioData: ArrayBuffer) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SEND_AUDIO, audioData),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);
