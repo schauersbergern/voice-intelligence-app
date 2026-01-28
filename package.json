@@ -8,7 +8,9 @@
   "main": "app/background.js",
   "scripts": {
     "dev": "nextron",
-    "build": "nextron build --mac",
+    "build": "nextron build",
+    "build:mac": "nextron build --mac",
+    "postinstall": "electron-builder install-app-deps",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {
