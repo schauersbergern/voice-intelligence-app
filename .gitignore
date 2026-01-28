@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+out/
+.next/
+renderer/out/
+renderer/.next/
+
+# Whisper models (too large for git)
+resources/models/*.bin
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local Claude files
+CLAUDE.local.md
+docs/session-notes/*.md
+
+# Electron
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
+# Testing
+coverage/
