@@ -1,0 +1,29 @@
+{
+  "name": "voice-intelligence-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "macOS desktop app for voice capture, transcription, and LLM enrichment",
+  "author": "Voice Intelligence",
+  "license": "MIT",
+  "main": "app/background.js",
+  "scripts": {
+    "dev": "nextron",
+    "build": "nextron build --mac",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "electron-serve": "^2.0.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0",
+    "nextron": "^9.0.0",
+    "typescript": "^5.4.0"
+  }
+}

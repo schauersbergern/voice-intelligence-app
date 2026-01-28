@@ -41,3 +41,10 @@ docs/session-notes/*.md
 
 # Testing
 coverage/
+
+# Nextron build output
+app/
+
+# Package manager
+yarn.lock
+pnpm-lock.yaml
