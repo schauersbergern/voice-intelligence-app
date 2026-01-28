@@ -16,7 +16,6 @@
   "dependencies": {
     "@kutalia/whisper-node-addon": "^1.1.0",
     "electron-serve": "^2.0.0",
-    "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
@@ -26,6 +25,7 @@
     "@types/react-dom": "^18.3.0",
     "electron": "^31.0.0",
     "electron-builder": "^24.0.0",
+    "next": "^14.2.0",
     "nextron": "^9.0.0",
     "typescript": "^5.4.0"
   }
