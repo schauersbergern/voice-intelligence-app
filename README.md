@@ -20,7 +20,7 @@ Voice notes are a fast way to capture ideas, but getting them into usable text i
 - 16kHz mono WAV optimized for speech
 
 ### 📝 Transcription
-- **Local mode**: whisper.cpp for offline, private transcription
+- **Local mode**: WebAssembly (transformers.js) for private, offline transcription in the browser
 - **API mode**: OpenAI Whisper for high-accuracy cloud processing
 
 ### ✨ LLM Enrichment
@@ -93,7 +93,7 @@ npm run dev
 
 1. **For API transcription**: Enter your OpenAI API key in Settings
 2. **For LLM enrichment**: Enter your OpenAI or Anthropic API key in Settings
-3. **For local transcription**: Download `ggml-base.en.bin` model to `resources/models/`
+3. **For local transcription**: Model downloads automatically on first use (no manual setup required)
 
 ## Usage
 
@@ -107,8 +107,8 @@ npm run dev
 
 ### Electron over Tauri
 - Native audio handling via Web Audio API
-- Easier integration with Node.js native modules (whisper.cpp bindings)
 - Mature ecosystem for desktop apps
+- Seamless integration with local LLMs and WASM modules
 
 ### Local Whisper
 - Privacy: Audio never leaves user's machine
@@ -155,7 +155,6 @@ voice-intelligence-app/
 │   ├── background.ts       # App entry point
 │   ├── preload.ts          # IPC bridge
 │   ├── whisper-handler.ts  # Transcription routing
-│   ├── whisper-local.ts    # Local whisper.cpp
 │   ├── whisper-api.ts      # OpenAI Whisper API
 │   ├── enrichment.ts       # LLM enrichment
 │   ├── enrichment-prompts.ts
@@ -165,6 +164,7 @@ voice-intelligence-app/
 │   ├── pages/
 │   ├── components/
 │   ├── hooks/
+│   ├── lib/                # WASM Whisper implementation
 │   └── styles/
 ├── shared/                 # Shared types
 │   └── types.ts

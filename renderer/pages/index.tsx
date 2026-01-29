@@ -3,7 +3,8 @@ import Head from 'next/head';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { RecordButton } from '../components/RecordButton';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
-import type { WhisperMode, TranscriptionResult, EnrichmentMode, LLMProvider } from '../../shared/types';
+import { transcribeLocal, isModelReady, initializeWhisper } from '../lib/whisper-local';
+import type { TranscriptionResult, EnrichmentMode, LLMProvider, WhisperMode } from '../../shared/types';
 
 export default function Home(): JSX.Element {
     const { state, error: recordError, duration, startRecording, stopRecording } = useAudioRecorder();
@@ -11,18 +12,19 @@ export default function Home(): JSX.Element {
     const [transcribing, setTranscribing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [whisperMode, setWhisperModeState] = useState<WhisperMode>('api');
+    const [whisperLanguage, setWhisperLanguage] = useState<string>('english');
     const [apiKey, setApiKeyState] = useState('');
     const [llmApiKey, setLlmApiKeyState] = useState('');
     const [llmProvider, setLlmProviderState] = useState<LLMProvider>('openai');
     const [enrichmentMode, setEnrichmentModeState] = useState<EnrichmentMode>('clean');
     const [showSettings, setShowSettings] = useState(false);
     const [hotkeyTriggered, setHotkeyTriggered] = useState(false);
+    const [modelLoadingStatus, setModelLoadingStatus] = useState<string | null>(null);
 
     // Ref to track recording state for hotkey handler
     const stateRef = useRef(state);
     stateRef.current = state;
 
-    // Load settings on mount
     useEffect(() => {
         if (window.electronAPI) {
             window.electronAPI.getWhisperMode().then(setWhisperModeState).catch(() => { });
@@ -72,6 +74,18 @@ export default function Home(): JSX.Element {
     const handleModeChange = async (mode: WhisperMode) => {
         setWhisperModeState(mode);
         window.electronAPI?.setWhisperMode(mode);
+        // Pre-load model if switching to local mode
+        if (mode === 'local' && !isModelReady()) {
+            setModelLoadingStatus('Loading Model... 0%');
+            try {
+                await initializeWhisper((progress) => {
+                    setModelLoadingStatus(`Loading Model... ${Math.round(progress)}%`);
+                });
+                setModelLoadingStatus(null);
+            } catch {
+                setModelLoadingStatus(null);
+            }
+        }
     };
 
     const handleApiKeyChange = async (key: string) => {
@@ -107,22 +121,53 @@ export default function Home(): JSX.Element {
         window.electronAPI?.setRecordingState(false).catch(() => { });
 
         if (audioData) {
-            if (!window.electronAPI) {
-                setError('Electron API not available');
-                return;
-            }
-
             setTranscribing(true);
             try {
-                const result = await window.electronAPI.sendAudioForTranscription(audioData);
-                setTranscription(result);
+                let rawText: string;
+
+                // Branch based on whisper mode
+                if (whisperMode === 'local') {
+                    // Local mode: transcribe in renderer using WASM
+                    // Only show loading status during model download, not transcription
+                    // Pass selected language (null/undefined for 'auto')
+                    rawText = await transcribeLocal(audioData, (progress, status) => {
+                        // Only show download/loading status, not transcription status
+                        if (status.toLowerCase().includes('load') || status.toLowerCase().includes('download') || progress < 100) {
+                            setModelLoadingStatus(`Loading Model... ${Math.round(progress)}%`);
+                        }
+                    }, whisperLanguage === 'auto' ? undefined : whisperLanguage);
+                    setModelLoadingStatus(null);
+                } else {
+                    // API mode: send to main process
+                    if (!window.electronAPI) {
+                        throw new Error('Electron API not available');
+                    }
+                    const result = await window.electronAPI.sendAudioForTranscription(audioData);
+                    setTranscription(result);
+                    return;
+                }
+
+                // For local mode, apply enrichment via main process
+                if (window.electronAPI && enrichmentMode !== 'none' && rawText.trim()) {
+                    const enrichedResult = await window.electronAPI.enrichTranscription(rawText);
+                    setTranscription(enrichedResult);
+                } else {
+                    setTranscription({
+                        text: rawText,
+                        enrichedText: rawText,
+                        wasEnriched: false,
+                        duration: 0,
+                        mode: 'local',
+                    });
+                }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Transcription failed');
+                setModelLoadingStatus(null);
             } finally {
                 setTranscribing(false);
             }
         }
-    }, [stopRecording]);
+    }, [stopRecording, whisperMode, enrichmentMode]);
 
     const handleRecordClick = useCallback(async () => {
         if (state === 'recording') {
@@ -159,6 +204,25 @@ export default function Home(): JSX.Element {
                         {isRecording ? formatDuration(duration) : isProcessing ? 'Transcribing & Enhancing' : 'Idle'}
                     </span>
                 </div>
+
+                {/* Model download progress indicator */}
+                {modelLoadingStatus && (
+                    <div style={styles.downloadProgress}>
+                        <div style={styles.downloadHeader}>
+                            <span>🔄 {modelLoadingStatus}</span>
+                        </div>
+                        <div style={styles.progressBarContainer}>
+                            <div
+                                style={{
+                                    ...styles.progressBar,
+                                    width: modelLoadingStatus.includes('%')
+                                        ? modelLoadingStatus.match(/(\d+)%/)?.[1] + '%'
+                                        : '100%'
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Record Button */}
                 <div style={styles.controlSection}>
@@ -202,12 +266,38 @@ export default function Home(): JSX.Element {
                                 <select
                                     style={styles.select}
                                     value={whisperMode}
-                                    onChange={(e) => handleModeChange(e.target.value as WhisperMode)}
+                                    onChange={(e) => handleModeChange(e.target.value as 'local' | 'api')}
                                 >
                                     <option value="api">☁️ OpenAI Whisper API</option>
-                                    <option value="local">💻 Local (whisper.cpp)</option>
+                                    <option value="local">🔒 Local (Offline)</option>
                                 </select>
                             </div>
+                            {whisperMode === 'local' && (
+                                <div style={styles.settingRow}>
+                                    <label style={styles.label}>Language:</label>
+                                    <select
+                                        style={styles.select}
+                                        value={whisperLanguage}
+                                        onChange={(e) => setWhisperLanguage(e.target.value)}
+                                    >
+                                        <option value="english">🇺🇸 English</option>
+                                        <option value="german">🇩🇪 German</option>
+                                        <option value="spanish">🇪🇸 Spanish</option>
+                                        <option value="french">🇫🇷 French</option>
+                                        <option value="italian">🇮🇹 Italian</option>
+                                        <option value="portuguese">🇵🇹 Portuguese</option>
+                                        <option value="russian">🇷🇺 Russian</option>
+                                        <option value="chinese">🇨🇳 Chinese</option>
+                                        <option value="japanese">🇯🇵 Japanese</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {modelLoadingStatus && (
+                                <div style={{ ...styles.settingRow, color: 'var(--color-primary)', fontSize: '0.85rem' }}>
+                                    {modelLoadingStatus}
+                                </div>
+                            )}
                             {whisperMode === 'api' && (
                                 <div style={styles.settingRow}>
                                     <label style={styles.label}>API Key:</label>
@@ -412,5 +502,33 @@ const styles: Record<string, React.CSSProperties> = {
         margin: 0,
         marginTop: '0.5rem',
         textAlign: 'center',
+    },
+    downloadProgress: {
+        width: '100%',
+        maxWidth: '300px',
+        padding: '0.75rem 1rem',
+        backgroundColor: 'var(--color-bg-glass)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-primary)',
+        marginBottom: '1rem',
+    },
+    downloadHeader: {
+        fontSize: '0.85rem',
+        color: 'var(--color-primary)',
+        marginBottom: '0.5rem',
+        textAlign: 'center',
+    },
+    progressBarContainer: {
+        width: '100%',
+        height: '6px',
+        backgroundColor: 'var(--color-bg-secondary)',
+        borderRadius: '3px',
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: 'var(--color-primary)',
+        borderRadius: '3px',
+        transition: 'width 0.3s ease',
     },
 };

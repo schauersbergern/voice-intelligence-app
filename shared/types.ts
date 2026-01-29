@@ -9,6 +9,7 @@
 export const IPC_CHANNELS = {
     PING: 'app:ping',
     SEND_AUDIO: 'audio:send-for-transcription',
+    ENRICH_TRANSCRIPTION: 'transcription:enrich',
     SET_WHISPER_MODE: 'whisper:set-mode',
     SET_API_KEY: 'settings:set-api-key',
     GET_WHISPER_MODE: 'whisper:get-mode',
@@ -124,4 +125,11 @@ export interface ElectronAPI {
      * Set the LLM provider and API key.
      */
     setLLMProvider: (provider: LLMProvider, apiKey: string) => Promise<void>;
+
+    /**
+     * Enrich transcription text using LLM (for local mode).
+     * @param text - Raw transcription text
+     * @returns Promise resolving with enriched transcription result
+     */
+    enrichTranscription: (text: string) => Promise<TranscriptionResult>;
 }

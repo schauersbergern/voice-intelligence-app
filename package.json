@@ -16,7 +16,7 @@
     "test": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {
-    "@kutalia/whisper-node-addon": "^1.1.0",
+    "@huggingface/transformers": "^3.8.1",
     "electron-serve": "^2.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

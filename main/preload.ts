@@ -44,6 +44,9 @@ const api: ElectronAPI = {
 
     setLLMProvider: (provider: LLMProvider, apiKey: string) =>
         ipcRenderer.invoke(IPC_CHANNELS.SET_LLM_PROVIDER, provider, apiKey),
+
+    enrichTranscription: (text: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.ENRICH_TRANSCRIPTION, text),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

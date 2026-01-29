@@ -65,6 +65,17 @@ function registerIpcHandlers(): void {
     ipcMain.handle(IPC_CHANNELS.SET_LLM_PROVIDER, async (_event, provider: LLMProvider, apiKey: string) => {
         setLLMProvider(provider, apiKey);
     });
+
+    ipcMain.handle(IPC_CHANNELS.ENRICH_TRANSCRIPTION, async (_event, text: string) => {
+        const { enrichedText, wasEnriched } = await enrich(text);
+        return {
+            text,
+            enrichedText: wasEnriched ? enrichedText : text,
+            wasEnriched,
+            duration: 0,
+            mode: 'local' as const,
+        };
+    });
 }
 
 // ============================================================================

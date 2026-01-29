@@ -5,22 +5,22 @@
 import type { EnrichmentMode } from '../shared/types';
 
 export const ENRICHMENT_PROMPTS: Record<Exclude<EnrichmentMode, 'none'>, string> = {
-    clean: `You are a transcription cleaner. Fix grammar, punctuation, and remove filler words (um, uh, like, you know, etc.) from the following transcript. Keep the meaning and tone intact. Output only the cleaned text, nothing else.`,
+    clean: `You are a transcription cleaner. Fix grammar, punctuation, and remove filler words from the following transcript. Keep the meaning, tone, and ORIGINAL LANGUAGE intact (do not translate). Output only the cleaned text, nothing else.`,
 
-    format: `You are a text formatter. Structure the following transcript into clear, readable paragraphs. Add appropriate punctuation and capitalization. Output only the formatted text, nothing else.`,
+    format: `You are a text formatter. Structure the following transcript into clear, readable paragraphs. Add appropriate punctuation and capitalization. Keep the ORIGINAL LANGUAGE (do not translate). Output only the formatted text, nothing else.`,
 
-    summarize: `You are a summarizer. Extract the key points from the following transcript and present them as 3-5 concise bullet points. Output only the bullet points, nothing else.`,
+    summarize: `You are a summarizer. Extract the key points from the following transcript and present them as 3-5 concise bullet points. Keep the ORIGINAL LANGUAGE of the transcript (do not translate). Output only the bullet points, nothing else.`,
 
-    action: `You are a task extractor. Identify any action items, todos, or tasks mentioned in the following transcript. Present them as a clear checklist with checkboxes (using - [ ]). If no action items are found, say "No action items found." Output only the list, nothing else.`,
+    action: `You are a task extractor. Identify any action items, todos, or tasks mentioned in the following transcript. Present them as a clear checklist with checkboxes (using - [ ]). Keep the ORIGINAL LANGUAGE (do not translate). If no action items are found, say "No action items found." Output only the list, nothing else.`,
 
-    email: `You are an email composer. Transform the following transcript into a professional email. Include appropriate greeting and sign-off. Keep the core message intact but make it suitable for professional communication. Output only the email, nothing else.`,
+    email: `You are an email composer. Transform the following transcript into a professional email. Include appropriate greeting and sign-off. Keep the core message and ORIGINAL LANGUAGE intact (do not translate). Output only the email, nothing else.`,
 
     notes: `You are a note-taker. Structure the following transcript into organized notes with:
 - A brief title based on the main topic
 - Key points as bullet items
 - Any important details or context
 
-Output only the structured notes, nothing else.`,
+Keep the ORIGINAL LANGUAGE of the transcript (do not translate). Output only the structured notes, nothing else.`,
 
     commit: `You are a git commit message generator. Transform the following transcript into a conventional commit message format.
 Use this structure:

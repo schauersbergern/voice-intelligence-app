@@ -1,14 +1,11 @@
-/**
- * Unified Whisper transcription handler
- * Routes transcription to local whisper.cpp or OpenAI API based on mode
- */
+// Unified Whisper transcription handler
+// Routes transcription to OpenAI API (Local transcription is now handled in Renderer)
 
 import type { WhisperMode, RawTranscriptionResult } from '../shared/types';
-import { transcribeLocal, isModelAvailable } from './whisper-local';
 import { transcribeWithAPI } from './whisper-api';
 
-// In-memory settings (will be persisted in a future mission)
-let currentMode: WhisperMode = 'api'; // Default to API mode (easier to test)
+// In-memory settings
+let currentMode: WhisperMode = 'api';
 let apiKey: string = '';
 
 /**
@@ -37,13 +34,9 @@ export function setApiKey(key: string): void {
  */
 export async function isReady(): Promise<{ ready: boolean; message?: string }> {
     if (currentMode === 'local') {
-        const modelExists = await isModelAvailable();
-        if (!modelExists) {
-            return {
-                ready: false,
-                message: 'Local model not found. Please download ggml-base.en.bin or switch to API mode.'
-            };
-        }
+        // Local mode is handled by Renderer, so Main process is effectively "ready" or shouldn't be called
+        // We'll return true here, but transcribe() will throw if called
+        return { ready: true };
     } else if (currentMode === 'api') {
         if (!apiKey || apiKey.trim() === '') {
             return {
@@ -72,7 +65,7 @@ export async function transcribe(audioBuffer: Buffer): Promise<RawTranscriptionR
     let text: string;
 
     if (currentMode === 'local') {
-        text = await transcribeLocal(audioBuffer);
+        throw new Error("Local transcription should be handled by Renderer process.");
     } else {
         text = await transcribeWithAPI(audioBuffer, apiKey);
     }
