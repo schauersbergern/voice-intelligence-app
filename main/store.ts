@@ -1,15 +1,6 @@
-import { WhisperMode, EnrichmentMode, LLMProvider, AppSettings } from '../shared/types';
+import { AppSettings } from '../shared/types';
 
-// Schema definition remains the same
-interface Schema {
-    whisperMode: WhisperMode;
-    whisperLanguage: string;
-    enrichmentMode: EnrichmentMode;
-    apiKey: string;
-    llmProvider: LLMProvider;
-    hotkey: string;
-}
-
+// Schema definition
 const schema = {
     whisperMode: { type: 'string', enum: ['local', 'api'], default: 'local' },
     whisperLanguage: { type: 'string', default: 'english' },

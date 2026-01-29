@@ -73,7 +73,6 @@ export default function Home(): JSX.Element {
             // Debounce: ignore if last toggle was too recent
             const now = Date.now();
             if (now - lastToggleTimeRef.current < DEBOUNCE_MS) {
-                console.log('Hotkey debounced - ignoring rapid toggle');
                 return;
             }
             lastToggleTimeRef.current = now;
@@ -81,7 +80,6 @@ export default function Home(): JSX.Element {
             if (stateRef.current === 'idle' || stateRef.current === 'error') {
                 // Don't start recording if we're still transcribing
                 if (transcribingRef.current) {
-                    console.log('Hotkey ignored - transcription in progress');
                     return;
                 }
                 handleStartRecording();

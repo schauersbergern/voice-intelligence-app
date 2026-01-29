@@ -11,7 +11,6 @@ import { setEnrichmentMode } from './enrichment';
 import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode } from '../shared/types';
 
 let tray: Tray | null = null;
-let isRecording = false;
 
 // Crisp 22x22 microphone icon - white on black (not template, keeps white in dark mode)
 const ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAIAAABL1vtsAAAAAXNSR0IArs4c6QAAAHhlWElmTU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAIdpAAQAAAABAAAATgAAAAAAAAEsAAAAAQAAASwAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAABagAwAEAAAAAQAAABYAAAAASU13RgAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAUJJREFUOBG1UbuKg1AU9Jk0qaxsLATFMj8h+kX+jj+ggqCl+Bd2ips6jViJqLuTXBDRcwPJ7p5CZo5n5s49VxQEQRRFfD+vX+ohlz4//K+USCG/8FJV1fM827Zvt9uyLOTkqz3IshyG4fezAEDftjBNcxgGZgEAyrPgrvN8Pq8hAUBJCzRpC0mScP56fwBQNEkX+oa+7wdB4DiOoiiQzfNsGEbf93Vd71wQkDbWNK1t23EcmQAAFM2dnlFpvfD29zRNXdfhy5pIsaXbSWA6RVVVuq4nScKm4zgGRXMnZlQmU9zvd8uyLpdLlmVlWZ5Op6ZpgI8WDzlpwUZd18X5KICjmHUgfyycV0VRXK9X/AXgzTz6vBQQ53n+9SwA5nU0epUCD5mmaRRFkGEX6wMfXbgpiFGqhRT0o1LD/9bjrfK9A38AcKyHRTqTgH4AAAAASUVORK5CYII=';
@@ -20,7 +19,8 @@ const ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAI
 const ICON_RECORDING_DATA_URL = ICON_DATA_URL;
 
 /**
- * Create the system tray
+ * Initialize the system tray icon and menu.
+ * Sets up the initial icon, tooltip, and builds the context menu.
  */
 export function createTray(): void {
     try {
@@ -40,7 +40,8 @@ export function createTray(): void {
 }
 
 /**
- * Rebuild the context menu with current settings
+ * Rebuild the context menu based on current application settings.
+ * This ensures the menu reflects the current state (e.g., Local vs API mode).
  */
 export async function rebuildMenu(): Promise<void> {
     if (!tray) return;
@@ -129,12 +130,12 @@ export async function rebuildMenu(): Promise<void> {
 }
 
 /**
- * Update tray icon based on recording state
+ * Update the tray icon to reflect the current recording state.
+ * @param recording - Whether recording is currently active
  */
 export function updateTrayIcon(recording: boolean): void {
     if (!tray) return;
 
-    isRecording = recording;
     const dataUrl = recording ? ICON_RECORDING_DATA_URL : ICON_DATA_URL;
     const icon = nativeImage.createFromDataURL(dataUrl);
     icon.setTemplateImage(!recording); // Template only for non-recording state
@@ -201,7 +202,8 @@ async function handleEnrichmentChange(mode: EnrichmentMode): Promise<void> {
 }
 
 /**
- * Destroy the tray
+ * Destroy the system tray instance.
+ * Call this when the application is quitting.
  */
 export function destroyTray(): void {
     if (tray) {

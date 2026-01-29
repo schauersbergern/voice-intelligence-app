@@ -30,6 +30,11 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     const startTimeRef = useRef<number>(0);
     const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    /**
+     * Start recording audio from the default microphone.
+     * Requests permission if not granted.
+     * Sets up AudioContext and ScriptProcessor for raw data capture.
+     */
     const startRecording = useCallback(async () => {
         try {
             setError(null);
@@ -92,6 +97,11 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         }
     }, []);
 
+    /**
+     * Stop recording and process the audio.
+     * Stops permission tracks, closes AudioContext, and encodes result to WAV.
+     * @returns Promise resolving to WAV ArrayBuffer or null if failed
+     */
     const stopRecording = useCallback(async (): Promise<ArrayBuffer | null> => {
         if (state !== 'recording') {
             return null;

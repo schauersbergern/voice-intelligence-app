@@ -15,21 +15,24 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 /**
- * Set the enrichment mode
+ * Set the enrichment mode.
+ * @param mode - The desired enrichment mode (e.g., 'clean', 'summarize')
  */
 export function setEnrichmentMode(mode: EnrichmentMode): void {
     currentMode = mode;
 }
 
 /**
- * Get the current enrichment mode
+ * Get the current enrichment mode.
  */
 export function getEnrichmentMode(): EnrichmentMode {
     return currentMode;
 }
 
 /**
- * Set the LLM provider and API key
+ * Set the LLM provider and API key.
+ * @param provider - 'openai' or 'anthropic'
+ * @param apiKey - API key for the selected provider
  */
 export function setLLMProvider(provider: LLMProvider, apiKey: string): void {
     currentProvider = provider;
@@ -37,14 +40,18 @@ export function setLLMProvider(provider: LLMProvider, apiKey: string): void {
 }
 
 /**
- * Get the current LLM provider
+ * Get the current LLM provider.
  */
 export function getLLMProvider(): LLMProvider {
     return currentProvider;
 }
 
 /**
- * Enrich text using OpenAI API
+ * Enrich text using OpenAI API.
+ * @param text - The text to enrich
+ * @param systemPrompt - The system prompt for the desired mode
+ * @param maxTokens - Max tokens for the response
+ * @returns The enriched text content
  */
 async function enrichWithOpenAI(text: string, systemPrompt: string, maxTokens: number): Promise<string> {
     const response = await fetch(OPENAI_API_URL, {
@@ -75,7 +82,11 @@ async function enrichWithOpenAI(text: string, systemPrompt: string, maxTokens: n
 }
 
 /**
- * Enrich text using Anthropic API
+ * Enrich text using Anthropic API.
+ * @param text - The text to enrich
+ * @param systemPrompt - The system prompt for the desired mode
+ * @param maxTokens - Max tokens for the response
+ * @returns The enriched text content
  */
 async function enrichWithAnthropic(text: string, systemPrompt: string, maxTokens: number): Promise<string> {
     const response = await fetch(ANTHROPIC_API_URL, {

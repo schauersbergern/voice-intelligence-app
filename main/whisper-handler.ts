@@ -9,28 +9,32 @@ let currentMode: WhisperMode = 'api';
 let apiKey: string = '';
 
 /**
- * Set the transcription mode
+ * Set the transcription mode.
+ * @param mode - 'local' for browser-based, 'api' for OpenAI Cloud
  */
 export function setWhisperMode(mode: WhisperMode): void {
     currentMode = mode;
 }
 
 /**
- * Get the current transcription mode
+ * Get the current transcription mode.
  */
 export function getWhisperMode(): WhisperMode {
     return currentMode;
 }
 
 /**
- * Set the OpenAI API key
+ * Set the OpenAI API key for API mode.
+ * @param key - The OpenAI API key string
  */
 export function setApiKey(key: string): void {
     apiKey = key;
 }
 
 /**
- * Check if transcription is ready
+ * Check if the transcription service is ready to process audio.
+ * For API mode, this checks if an API key is present.
+ * @returns Object indicating readiness and optional error message
  */
 export async function isReady(): Promise<{ ready: boolean; message?: string }> {
     if (currentMode === 'local') {
