@@ -16,7 +16,6 @@ let apiKey: string = '';
  */
 export function setWhisperMode(mode: WhisperMode): void {
     currentMode = mode;
-    console.log(`Whisper mode set to: ${mode}`);
 }
 
 /**
@@ -31,7 +30,6 @@ export function getWhisperMode(): WhisperMode {
  */
 export function setApiKey(key: string): void {
     apiKey = key;
-    console.log('API key updated');
 }
 
 /**

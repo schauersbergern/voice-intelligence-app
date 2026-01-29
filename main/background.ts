@@ -21,17 +21,11 @@ function registerIpcHandlers(): void {
     });
 
     ipcMain.handle(IPC_CHANNELS.SEND_AUDIO, async (_event, audioData: ArrayBuffer) => {
-        console.log(`Received audio: ${audioData.byteLength} bytes`);
-
         // Step 1: Transcribe audio
         const transcriptionResult = await transcribe(Buffer.from(audioData));
-        console.log(`Transcription complete: "${transcriptionResult.text.substring(0, 50)}..." (${transcriptionResult.duration.toFixed(2)}s)`);
 
         // Step 2: Enrich transcription with LLM
         const { enrichedText, wasEnriched } = await enrich(transcriptionResult.text);
-        if (wasEnriched) {
-            console.log(`Enrichment complete: "${enrichedText.substring(0, 50)}..."`);
-        }
 
         return {
             ...transcriptionResult,

@@ -48,7 +48,7 @@ export interface RawTranscriptionResult {
 // ============================================================================
 
 /** LLM enrichment processing modes */
-export type EnrichmentMode = 'clean' | 'format' | 'summarize' | 'action' | 'email' | 'notes' | 'none';
+export type EnrichmentMode = 'clean' | 'format' | 'summarize' | 'action' | 'email' | 'notes' | 'commit' | 'tweet' | 'slack' | 'none';
 
 /** LLM provider options */
 export type LLMProvider = 'openai' | 'anthropic';

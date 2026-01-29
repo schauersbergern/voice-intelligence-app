@@ -235,6 +235,9 @@ export default function Home(): JSX.Element {
                                     <option value="action">✅ Action Items</option>
                                     <option value="email">✉️ Email</option>
                                     <option value="notes">📒 Notes</option>
+                                    <option value="commit">💻 Git Commit</option>
+                                    <option value="tweet">🐦 Tweet Thread</option>
+                                    <option value="slack">💬 Slack Message</option>
                                 </select>
                             </div>
                             {enrichmentMode !== 'none' && (

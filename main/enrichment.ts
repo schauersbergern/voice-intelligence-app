@@ -19,7 +19,6 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
  */
 export function setEnrichmentMode(mode: EnrichmentMode): void {
     currentMode = mode;
-    console.log(`Enrichment mode set to: ${mode}`);
 }
 
 /**
@@ -35,7 +34,6 @@ export function getEnrichmentMode(): EnrichmentMode {
 export function setLLMProvider(provider: LLMProvider, apiKey: string): void {
     currentProvider = provider;
     llmApiKey = apiKey;
-    console.log(`LLM provider set to: ${provider}`);
 }
 
 /**
@@ -118,9 +116,7 @@ export async function enrich(text: string): Promise<{ enrichedText: string; wasE
         return { enrichedText: text, wasEnriched: false };
     }
 
-    // Skip enrichment if no API key
     if (!llmApiKey || llmApiKey.trim() === '') {
-        console.log('Skipping enrichment: No API key configured');
         return { enrichedText: text, wasEnriched: false };
     }
 
@@ -140,10 +136,8 @@ export async function enrich(text: string): Promise<{ enrichedText: string; wasE
             enrichedText = await enrichWithAnthropic(text, systemPrompt, maxTokens);
         }
 
-        console.log(`Enrichment complete (${currentMode}): ${enrichedText.substring(0, 50)}...`);
         return { enrichedText, wasEnriched: true };
     } catch (error) {
-        console.error('Enrichment failed:', error);
         // Return original text on error
         return { enrichedText: text, wasEnriched: false };
     }

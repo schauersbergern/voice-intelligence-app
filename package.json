@@ -10,6 +10,8 @@
     "dev": "nextron",
     "build": "nextron build",
     "build:mac": "nextron build --mac",
+    "build:win": "nextron build --win",
+    "build:all": "nextron build --mac --win",
     "postinstall": "electron-builder install-app-deps",
     "test": "echo \"No tests yet\" && exit 0"
   },

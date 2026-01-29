@@ -21,6 +21,36 @@ export const ENRICHMENT_PROMPTS: Record<Exclude<EnrichmentMode, 'none'>, string>
 - Any important details or context
 
 Output only the structured notes, nothing else.`,
+
+    commit: `You are a git commit message generator. Transform the following transcript into a conventional commit message format.
+Use this structure:
+<type>(<scope>): <subject>
+
+<body>
+
+Types: feat, fix, docs, style, refactor, test, chore
+Keep the subject under 50 characters.
+Body should explain what and why, not how.
+Output only the commit message, nothing else.`,
+
+    tweet: `You are a Twitter/X thread creator. Transform the following transcript into a tweet thread.
+Rules:
+- Each tweet must be under 280 characters
+- Number tweets as 1/, 2/, etc.
+- Make it engaging and punchy
+- Use line breaks between tweets
+- 3-5 tweets maximum
+
+Output only the tweet thread, nothing else.`,
+
+    slack: `You are a Slack message composer. Transform the following transcript into a casual, friendly Slack message.
+Rules:
+- Keep it conversational and warm
+- Use appropriate emojis sparingly (1-3 max)
+- Break into short paragraphs if needed
+- Suitable for team communication
+
+Output only the Slack message, nothing else.`,
 };
 
 /**
@@ -37,13 +67,17 @@ export function getSystemPrompt(mode: EnrichmentMode): string | null {
 export function getMaxTokens(mode: EnrichmentMode): number {
     switch (mode) {
         case 'summarize':
+        case 'commit':
             return 300;
         case 'action':
             return 200;
+        case 'tweet':
+            return 400;
         case 'clean':
         case 'format':
         case 'email':
         case 'notes':
+        case 'slack':
             return 1000;
         default:
             return 500;

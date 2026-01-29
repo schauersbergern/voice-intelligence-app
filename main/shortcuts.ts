@@ -12,14 +12,10 @@ const DEFAULT_HOTKEY = 'CommandOrControl+Shift+Space';
  * Register global keyboard shortcuts
  */
 export function registerGlobalShortcuts(): void {
-    // Register the main recording toggle hotkey
     const success = globalShortcut.register(DEFAULT_HOTKEY, handleRecordingToggle);
 
     if (!success) {
-        console.warn(`Failed to register global shortcut: ${DEFAULT_HOTKEY}`);
-        console.warn('The shortcut may be in use by another application');
-    } else {
-        console.log(`Global shortcut registered: ${DEFAULT_HOTKEY}`);
+        // Shortcut may be in use by another application
     }
 }
 
@@ -37,7 +33,6 @@ function handleRecordingToggle(): void {
 
     // Send toggle event to renderer
     mainWindow.webContents.send(IPC_CHANNELS.TOGGLE_RECORDING);
-    console.log('Recording toggle triggered via hotkey');
 }
 
 /**
@@ -45,7 +40,6 @@ function handleRecordingToggle(): void {
  */
 export function unregisterAllShortcuts(): void {
     globalShortcut.unregisterAll();
-    console.log('All global shortcuts unregistered');
 }
 
 /**
