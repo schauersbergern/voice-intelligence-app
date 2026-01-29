@@ -4,11 +4,11 @@
 Process transcribed text through LLM to produce immediately usable output (formatted, structured, or enhanced).
 
 ## Success Criteria
-- [ ] Raw transcription is processed by LLM
-- [ ] Output is formatted/structured appropriately
-- [ ] Multiple enrichment modes available
-- [ ] Works with user's API key (OpenAI or Anthropic)
-- [ ] Fast enough for real-time workflow
+- [x] Raw transcription is processed by LLM
+- [x] Output is formatted/structured appropriately
+- [x] Multiple enrichment modes available
+- [x] Works with user's API key (OpenAI or Anthropic)
+- [x] Fast enough for real-time workflow
 
 ## Steps
 

@@ -141,11 +141,11 @@ These are "wow" features that other developers likely won't have:
 ## Success Criteria
 
 The app is ready for submission when:
-- [ ] All Part A items complete (no bugs)
-- [ ] All Part B items complete (polished)
-- [ ] At least 2 Part C features implemented (differentiation)
-- [ ] All Part D items complete (code quality)
-- [ ] All Part E items complete (documentation)
+- [x] All Part A items complete (no bugs)
+- [x] All Part B items complete (polished)
+- [x] At least 2 Part C features implemented (differentiation)
+- [x] All Part D items complete (code quality)
+- [x] All Part E items complete (documentation)
 - [ ] App tested by someone other than developer
 - [ ] README would impress a hiring manager
 

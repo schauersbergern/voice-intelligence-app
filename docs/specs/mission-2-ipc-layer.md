@@ -4,10 +4,10 @@
 Establish secure, type-safe communication between Electron main process and Next.js renderer.
 
 ## Success Criteria
-- [ ] contextBridge exposes typed API to renderer
-- [ ] Renderer can call main process and receive responses
-- [ ] All IPC channels are typed in shared/types.ts
-- [ ] No direct ipcRenderer exposure (security)
+- [x] contextBridge exposes typed API to renderer
+- [x] Renderer can call main process and receive responses
+- [x] All IPC channels are typed in shared/types.ts
+- [x] No direct ipcRenderer exposure (security)
 
 ## Steps
 

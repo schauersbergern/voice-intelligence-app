@@ -4,11 +4,11 @@
 Implement dual-mode transcription: local Whisper (offline) and OpenAI Whisper API (cloud).
 
 ## Success Criteria
-- [ ] Local Whisper transcribes audio without internet
-- [ ] OpenAI API transcribes audio with user-provided key
-- [ ] User can switch between modes in settings
-- [ ] Transcription runs in utilityProcess (non-blocking)
-- [ ] Progress/status feedback during transcription
+- [x] Local Whisper transcribes audio without internet
+- [x] OpenAI API transcribes audio with user-provided key
+- [x] User can switch between modes in settings
+- [x] Transcription runs in utilityProcess (non-blocking)
+- [x] Progress/status feedback during transcription
 
 ## Steps
 

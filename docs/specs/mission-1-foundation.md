@@ -4,11 +4,11 @@
 Scaffold a minimal Electron + Next.js desktop app using Nextron with TypeScript strict mode.
 
 ## Success Criteria
-- [ ] App launches and displays a window
-- [ ] TypeScript strict mode enabled
-- [ ] Basic window management works (open, close, minimize)
-- [ ] Project structure matches CLAUDE.md architecture
-- [ ] Hot reload works in development
+- [x] App launches and displays a window
+- [x] TypeScript strict mode enabled
+- [x] Basic window management works (open, close, minimize)
+- [x] Project structure matches CLAUDE.md architecture
+- [x] Hot reload works in development
 
 ## Steps
 

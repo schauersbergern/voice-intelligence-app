@@ -4,11 +4,11 @@
 Enable system-wide keyboard shortcut to activate the app and toggle recording.
 
 ## Success Criteria
-- [ ] Global hotkey works even when app is not focused
-- [ ] Hotkey brings app to foreground
-- [ ] Hotkey toggles recording on/off
-- [ ] Visual feedback when hotkey is pressed
-- [ ] Hotkey is configurable in settings
+- [x] Global hotkey works even when app is not focused
+- [x] Hotkey brings app to foreground
+- [x] Hotkey toggles recording on/off
+- [x] Visual feedback when hotkey is pressed
+- [x] Hotkey is configurable in settings
 
 ## Steps
 

@@ -4,11 +4,11 @@
 Implement microphone recording that produces Whisper-compatible audio (16kHz mono WAV).
 
 ## Success Criteria
-- [ ] User can start/stop recording via UI button
-- [ ] Audio is captured from microphone
-- [ ] Output is 16kHz mono WAV format
-- [ ] Recording state is clearly indicated in UI
-- [ ] Audio data is passed to main process for processing
+- [x] User can start/stop recording via UI button
+- [x] Audio is captured from microphone
+- [x] Output is 16kHz mono WAV format
+- [x] Recording state is clearly indicated in UI
+- [x] Audio data is passed to main process for processing
 
 ## Steps
 

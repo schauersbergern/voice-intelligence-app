@@ -56,15 +56,15 @@ Implement specific UX improvements and workflow optimizations based on user feed
 
 ---
 
-### R-006: Global Push-to-Talk Hotkey
-- **Description**: Implement a global hotkey that records while held down and stops on release (push-to-talk style).
+### R-006: Global Toggle-to-Talk Hotkey
+- **Description**: Implement a global hotkey that toggles recording on and off (modified from push-to-talk for stability).
 - **Acceptance Criteria**:
   - [x] Global hotkey (suggest: Cmd+Shift+Space or configurable)
-  - [x] Key DOWN → start recording immediately
-  - [x] Key UP → stop recording, trigger transcription
+  - [x] Key Press → Start recording
+  - [x] Key Press (again) → Stop recording, trigger transcription
   - [x] Works even when app is not focused
   - [x] Visual feedback in app when hotkey is active
-  - [x] Different from toggle behavior — this is push-to-talk
+  - [x] "Toggle-to-Talk" behavior implementations
 
 ---
 

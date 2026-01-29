@@ -4,11 +4,11 @@
 Create a clean, professional interface that integrates seamlessly into workflow.
 
 ## Success Criteria
-- [ ] UI is visually polished and minimal
-- [ ] Recording state is immediately clear
-- [ ] Transcript is easy to read and copy
-- [ ] Settings are accessible but not intrusive
-- [ ] App feels native to macOS
+- [x] UI is visually polished and minimal
+- [x] Recording state is immediately clear
+- [x] Transcript is easy to read and copy
+- [x] Settings are accessible but not intrusive
+- [x] App feels native to macOS
 
 ## Steps
 
