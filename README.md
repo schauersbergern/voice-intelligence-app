@@ -1,183 +1,125 @@
 # Voice Intelligence
 
-> Desktop voice capture and AI-powered transcription for macOS
+> **Voice-to-text that just works.** Speak anywhere, paste everywhere.
+> 
+> *Desktop voice capture and AI-powered transcription for macOS.*
 
-## Problem
+![Voice Intelligence Demo](/docs/assets/demo.gif)
 
-Voice notes are a fast way to capture ideas, but getting them into usable text is friction-heavy. Existing solutions require cloud uploads, don't work offline, or lack customization.
+## ✨ Features
 
-**Voice Intelligence** solves this by providing:
-- One-key capture (global hotkey)
-- Instant transcription (local or cloud)
-- AI-powered text enhancement (formatting, summarization, action items)
-- Everything runs locally with optional cloud features (BYOK)
+- 🎙️ **Push-to-Talk**: Global hotkey (default `Alt+Space`) to record instantly from any app.
+- 🔒 **Local Privacy**: Transcribe offline using WebAssembly-powered Whisper (zero data leaves your device).
+- ☁️ **Cloud Accuracy**: Optional OpenAI Whisper API integration for highest accuracy.
+- 🧠 **AI Enrichment**: Use LLMs (OpenAI/Anthropic) to clean, format, summarize, or extract action items.
+- 📋 **Auto-Paste**: Transcription is automatically pasted into your active text field.
+- ⚙️ **Customizable**: Configurable hotkeys, language selection, and enrichment prompts.
+- 🖥️ **Menu Bar**: Unobtrusive menu bar app for quick mode switching.
 
-## Features
+## 🚀 Quick Start
 
-### 🎙 Voice Capture
-- One-click or hotkey-triggered recording
-- Real-time duration display
-- 16kHz mono WAV optimized for speech
+1. **Download** the latest release (`.dmg`) and drag to Applications.
+2. **Launch** the app and grant **Microphone Permissions**.
+3. **Press** `Alt+Space` (or your custom hotkey) to start recording.
+4. **Speak** your thought.
+5. **Release** keys to stop. The text will appear wherever your cursor is!
 
-### 📝 Transcription
-- **Local mode**: WebAssembly (transformers.js) for private, offline transcription in the browser
-- **API mode**: OpenAI Whisper for high-accuracy cloud processing
+## 🏗️ Architecture
 
-### ✨ LLM Enrichment
-Choose how AI processes your transcription:
-- **Clean**: Fix grammar and remove filler words
-- **Format**: Structure into readable paragraphs
-- **Summarize**: Extract key points as bullet items
-- **Action Items**: Pull out todos and tasks
-- **Email**: Transform into professional email
-- **Notes**: Format as structured notes
-- **None**: Keep raw transcription
+Voice Intelligence combines the native capabilities of Electron with the flexibility of Next.js and the power of local AI.
 
-### ⌨️ Keyboard Controls
-- `⌘+Shift+Space`: Global hotkey to toggle recording
-- `Enter`: Start/stop recording when focused
-- `⌘+C`: Copy result to clipboard
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│           Renderer (Next.js)            │
-│  ┌─────────────────────────────────┐    │
-│  │     React UI Components         │    │
-│  │  (RecordButton, TranscriptDisplay)   │
-│  └───────────────┬─────────────────┘    │
-│                  │ IPC                   │
-└──────────────────┼──────────────────────┘
-                   │
-┌──────────────────┼──────────────────────┐
-│                  │                       │
-│           Main (Electron)               │
-│  ┌───────────────┴─────────────────┐    │
-│  │       Whisper Handler           │    │
-│  │  (Local via whisper.cpp or API) │    │
-│  └───────────────┬─────────────────┘    │
-│                  │                       │
-│  ┌───────────────┴─────────────────┐    │
-│  │       Enrichment Handler        │    │
-│  │  (OpenAI / Anthropic LLM)       │    │
-│  └─────────────────────────────────┘    │
-│                                          │
-│  ┌─────────────────────────────────┐    │
-│  │  Window Manager | Shortcuts     │    │
-│  └─────────────────────────────────┘    │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    User[👤 User] -->|Alt+Space| GlobalShortcut[⌨️ Global Hotkey]
+    GlobalShortcut -->|Start/Stop| Recorder[🎙️ Audio Recorder]
+    Recorder -->|16kHz WAV| Pipeline{Transcription Pipeline}
+    
+    Pipeline -->|Local Mode| WASM[🔒 Whisper WASM]
+    Pipeline -->|Cloud Mode| API[☁️ OpenAI API]
+    
+    WASM --> RawText[📄 Raw Text]
+    API --> RawText
+    
+    RawText --> Enrichment{✨ AI Enrichment}
+    Enrichment -->|Clean/Format| LLM[🧠 LLM Processor]
+    Enrichment -->|None| FinalText
+    
+    LLM --> FinalText[📝 Final Text]
+    
+    FinalText --> Clipboard[📋 System Clipboard]
+    Clipboard -->|Auto-Paste| ActiveApp[🖥️ Active Application]
 ```
 
-## Setup
+## 🛠️ Tech Stack
+
+- **Electron**: For cross-platform desktop integration and global shortcuts.
+- **Next.js (Nextron)**: React-based renderer for a modern, responsive UI.
+- **TypeScript**: Strict type safety across main and renderer processes.
+- **Whisper**: State-of-the-art speech recognition (Local via Transformers.js, Cloud via OpenAI).
+- **LLMs**: GPT-4o-mini and Claude 3 Haiku for intelligent text enrichment.
+- **Vitest**: Unit and integration testing.
+
+## 💡 Design Decisions
+
+### Why Local Whisper?
+Privacy is paramount. Using WebAssembly-based Whisper means your voice data never has to leave your machine. It works completely offline and has zero latency overhead from network requests.
+
+### Why Push-to-Talk?
+Toggle buttons introduce friction ("Did I start recording?"). Push-to-talk mimics natural speech patterns—press when you speak, release when done. It's faster and less error-prone.
+
+### Why Auto-Paste?
+The goal is to reduce friction. Manually copying and pasting breaks flow. Auto-paste makes the app feel like a native extension of your keyboard.
+
+## 💻 Development
 
 ### Prerequisites
-- macOS 12+
 - Node.js 18+
+- macOS (for global hotkeys and automation features)
 
-### Installation
+### Setup
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/schauersbergern/voice-intelligence-app.git
 cd voice-intelligence-app
 
 # Install dependencies
 npm install
 
-# Run in development
-npm run dev
-```
-
-### Configuration
-
-1. **For API transcription**: Enter your OpenAI API key in Settings
-2. **For LLM enrichment**: Enter your OpenAI or Anthropic API key in Settings
-3. **For local transcription**: Model downloads automatically on first use (no manual setup required)
-
-## Usage
-
-1. Press the **Record** button or use `⌘+Shift+Space`
-2. Speak your message
-3. Press **Stop** or ⌘+Shift+Space again
-4. View your transcription (with optional AI enhancement)
-5. Click **Copy** or use `⌘+C` to copy to clipboard
-
-## Design Decisions
-
-### Electron over Tauri
-- Native audio handling via Web Audio API
-- Mature ecosystem for desktop apps
-- Seamless integration with local LLMs and WASM modules
-
-### Local Whisper
-- Privacy: Audio never leaves user's machine
-- Offline capable: Works without internet
-- Speed: No network latency for transcription
-
-### BYOK (Bring Your Own Key)
-- No subscription fees from us
-- Users control their API costs
-- Flexible provider choice (OpenAI or Anthropic)
-
-### Separate Transcription and Enrichment
-- Modular pipeline: Users can disable enrichment for raw transcripts
-- Choice: Different LLM providers can be used for each step
-- Fallback: If enrichment fails, raw transcription is still shown
-
-## Development
-
-```bash
 # Run in development mode
 npm run dev
-
-# Type check
-npx tsc --noEmit
-
-# Build for macOS
-npm run build:mac
 ```
 
-## Building
+### Testing
 
 ```bash
-# Build macOS DMG
-npm run build:mac
-
-# Output will be in dist/ folder
+# Run unit and integration tests
+npm test
 ```
 
-## Project Structure
+### Building
+
+```bash
+# Build for macOS (Universal DMG)
+npm run build:mac
+```
+
+## 📂 Project Structure
 
 ```
 voice-intelligence-app/
-├── main/                   # Electron main process
-│   ├── background.ts       # App entry point
-│   ├── preload.ts          # IPC bridge
-│   ├── whisper-handler.ts  # Transcription routing
-│   ├── whisper-api.ts      # OpenAI Whisper API
-│   ├── enrichment.ts       # LLM enrichment
-│   ├── enrichment-prompts.ts
-│   ├── window-manager.ts
-│   └── shortcuts.ts
-├── renderer/               # Next.js renderer process
-│   ├── pages/
-│   ├── components/
-│   ├── hooks/
-│   ├── lib/                # WASM Whisper implementation
-│   └── styles/
-├── shared/                 # Shared types
-│   └── types.ts
-├── resources/
-│   └── models/             # Whisper model files
-└── docs/
-    └── specs/              # Mission specifications
+├── main/                   # Electron Main Process
+│   ├── background.ts       # Entry point
+│   ├── whisper-handler.ts  # Transcription logic
+│   └── tray.ts             # Menu bar integration
+├── renderer/               # Next.js Renderer Process
+│   ├── pages/              # UI Pages
+│   ├── components/         # React Components
+│   └── hooks/              # Custom Hooks (useAudioRecorder)
+├── shared/                 # Shared Types & constants
+└── tests/                  # Vitest Test Suite
 ```
 
-## License
+## 📄 License
 
-MIT
-
----
-
-Built with ❤️ for voice-first productivity
+MIT © Voice Intelligence Team
