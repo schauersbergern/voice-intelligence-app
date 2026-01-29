@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ElectronAPI, type WhisperMode, type EnrichmentMode, type LLMProvider } from '../shared/types';
+import { IPC_CHANNELS, type ElectronAPI, type WhisperMode, type EnrichmentMode, type LLMProvider, type AudioDevice } from '../shared/types';
 
 // Secure IPC bridge
 // CRITICAL: Never expose raw ipcRenderer to the renderer process
@@ -70,6 +70,8 @@ const api: ElectronAPI = {
             ipcRenderer.removeListener(IPC_CHANNELS.SETTINGS_CHANGED, handler);
         };
     },
+    updateAudioDevices: (devices: AudioDevice[]) =>
+        ipcRenderer.invoke(IPC_CHANNELS.AUDIO_DEVICES_UPDATED, devices),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

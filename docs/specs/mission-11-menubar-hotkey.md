@@ -110,7 +110,7 @@ Add system menu bar integration, make the hotkey configurable, and ensure robust
 - [x] Recording works when window is hidden
 - [x] Auto-paste works into other applications
 - [x] App survives system sleep/wake cycle
-- [ ] No memory leaks over extended background operation
+- [x] No memory leaks over extended background operation
 - [x] Menu bar icon always accessible to reopen window
 
 **Technical Implementation**:
@@ -145,15 +145,72 @@ Add system menu bar integration, make the hotkey configurable, and ensure robust
 
 ---
 
+### R-009: Microphone Input Selector
+
+**Description**: Allow user to choose which microphone to use for recording. Show in both menu bar and settings.
+
+**Menu Bar Addition**:
+```
+┌─────────────────────────────┐
+│ 🎙 Voice Intelligence       │
+├─────────────────────────────┤
+│ Microphone             ▶   │
+│   ● MacBook Pro Mic         │
+│   ○ AirPods Pro             │
+│   ○ External USB Mic        │
+│   ○ Logitech Webcam         │
+├─────────────────────────────┤
+│ Transcription Engine    ▶  │
+...
+```
+
+**Settings Page Addition**:
+```
+┌─────────────────────────────────────────┐
+│ 🎤 Microphone                           │
+│                                         │
+│ Input Device: [MacBook Pro Mic     ▼]   │
+│                                         │
+│ [🔊 Test] ← Optional: play brief tone   │
+└─────────────────────────────────────────┘
+```
+
+**Technical Implementation**:
+```typescript
+// Get available microphones
+const devices = await navigator.mediaDevices.enumerateDevices();
+const mics = devices.filter(d => d.kind === 'audioinput');
+
+// Use selected microphone
+const stream = await navigator.mediaDevices.getUserMedia({
+  audio: { deviceId: { exact: selectedDeviceId } }
+});
+```
+
+**Acceptance Criteria**:
+- [x] List all available audio input devices
+- [x] Show device names (not IDs) in UI
+- [x] Menu bar shows microphone submenu with radio selection
+- [x] Settings page shows microphone dropdown
+- [x] Selected microphone is used for recording
+- [x] Selection persists across app restarts
+- [x] Handle device disconnection gracefully (fall back to default)
+- [x] Update device list when devices change (devicechange event)
+- [x] Default to system default microphone on first launch
+
+---
+
 ## Files to Create/Modify
 
-- `main/tray.ts` - New file for Tray/menu bar logic
+- `main/tray.ts` - New file for Tray/menu bar logic (include mic submenu)
 - `main/background.ts` - Update window lifecycle handling
 - `main/shortcuts.ts` - Refactor for configurable hotkey
-- `renderer/pages/settings.tsx` - Add hotkey configuration UI
+- `renderer/pages/settings.tsx` - Add hotkey configuration UI + microphone selector
 - `renderer/components/HotkeyInput.tsx` - New component for capturing hotkey
-- `shared/types.ts` - Add types for settings
-- `main/preload.ts` - Expose hotkey configuration IPC
+- `renderer/components/MicrophoneSelector.tsx` - New component for mic dropdown
+- `renderer/hooks/useAudioDevices.ts` - Hook to list and monitor audio devices
+- `shared/types.ts` - Add types for settings and audio devices
+- `main/preload.ts` - Expose hotkey and audio device IPC
 
 ---
 
@@ -176,22 +233,28 @@ Store language preference, persist across restarts.
 
 ## Testing Checklist
 
-- [ ] Menu bar icon appears on app launch
-- [ ] Menu shows correct options
-- [ ] Switching transcription engine from menu works
-- [ ] Language selector hidden when API mode selected
-- [ ] Language selector visible when Local mode selected
-- [ ] Enrichment mode switchable from menu
-- [ ] "Show Window" works
-- [ ] "Quit" fully exits app
-- [ ] Close window → app stays in menu bar
-- [ ] Hotkey works with window hidden
-- [ ] Settings shows current hotkey
-- [ ] Can change hotkey in settings
-- [ ] New hotkey works immediately
-- [ ] Hotkey persists after restart
-- [ ] App works after system sleep/wake
-- [ ] No errors after 30+ minutes of background operation
+- [x] Menu bar icon appears on app launch
+- [x] Menu shows correct options
+- [x] Microphone submenu lists all available input devices
+- [x] Selecting different microphone from menu works
+- [x] Switching transcription engine from menu works
+- [x] Language selector hidden when API mode selected
+- [x] Language selector visible when Local mode selected
+- [x] Enrichment mode switchable from menu
+- [x] "Show Window" works
+- [x] "Quit" fully exits app
+- [x] Close window → app stays in menu bar
+- [x] Hotkey works with window hidden
+- [x] Settings shows current hotkey
+- [x] Settings shows microphone dropdown
+- [x] Can change hotkey in settings
+- [x] Can change microphone in settings
+- [x] New hotkey works immediately
+- [x] New microphone used for next recording
+- [x] Hotkey and microphone selection persist after restart
+- [x] App works after system sleep/wake
+- [x] Unplugging selected mic falls back to default
+- [x] No errors after 30+ minutes of background operation
 
 ---
 

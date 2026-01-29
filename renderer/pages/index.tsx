@@ -4,11 +4,14 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { RecordButton } from '../components/RecordButton';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
 import { HotkeyInput } from '../components/HotkeyInput';
+import { MicrophoneSelector } from '../components/MicrophoneSelector';
+import { useAudioDevices } from '../hooks/useAudioDevices';
 import { transcribeLocal, isModelReady, initializeWhisper } from '../lib/whisper-local';
 import type { TranscriptionResult, EnrichmentMode, WhisperMode } from '../../shared/types';
 
 export default function Home(): JSX.Element {
     const { state, error: recordError, duration, startRecording, stopRecording } = useAudioRecorder();
+    const { selectedId: microphoneId } = useAudioDevices();
     const [transcription, setTranscription] = useState<TranscriptionResult | null>(null);
     const [transcribing, setTranscribing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -169,9 +172,9 @@ export default function Home(): JSX.Element {
     const handleStartRecording = useCallback(async () => {
         setTranscription(null);
         setError(null);
-        await startRecording();
+        await startRecording(microphoneId);
         window.electronAPI?.setRecordingState(true).catch(() => { });
-    }, [startRecording]);
+    }, [startRecording, microphoneId]);
 
     const handleStopRecording = useCallback(async () => {
         setError(null);
@@ -426,6 +429,11 @@ export default function Home(): JSX.Element {
                                     Enrichment requires Cloud Mode
                                 </div>
                             )}
+                        </div>
+
+                        <div style={styles.settingsSection}>
+                            <h3 style={styles.sectionTitle}>🎤 Audio</h3>
+                            <MicrophoneSelector />
                         </div>
 
                         <div style={styles.settingsSection}>

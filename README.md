@@ -8,7 +8,8 @@
 
 ## ✨ Features
 
-- 🎙️ **Push-to-Talk**: Global hotkey (default `Alt+Space`) to record instantly from any app.
+- 🎙️ **Global Hotkey**: Press `Alt+Space` (default) to toggle recording from any app. (Press & release to start, press & release again to stop).
+- 🎤 **Microphone Chooser**: Select your preferred input device from the menu bar or settings.
 - 🔒 **Local Privacy**: Transcribe offline using WebAssembly-powered Whisper (zero data leaves your device).
 - ☁️ **Cloud Accuracy**: Optional OpenAI Whisper API integration for highest accuracy.
 - 🧠 **AI Enrichment**: Use OpenAI to clean, format, summarize, or extract action items.
@@ -16,7 +17,7 @@
 - ⚙️ **Customizable**: Change hotkeys, language, and enrichment settings via the menu bar widget or app settings.
 - 🖥️ **Menu Bar**: Unobtrusive menu bar widget for quick mode switching.
 
-![Menu Bar Widget](/docs/assets/menubar-widget.png)
+![Menu Bar Widget](/docs/assets/menubar-complete.jpg)
 
 ## 🚀 Quick Start
 
@@ -28,11 +29,14 @@
    - Toggle **Voice Intelligence** to ON.
    - *Without this, Auto-Paste will not work and you will need to manually copy text.*
    
-   ![Accessibility Permission](/docs/assets/accessibility-permission.png)
+   ![Accessibility Permission](/docs/assets/accessibility-voice-intelligence.jpg)
 
-4. **Press** `Alt+Space` (default) to start recording.
-5. **Speak** your thought.
-6. **Release** keys to stop. The text will appear wherever your cursor is!
+4. **Toggle Recording**:
+   - Press and **release** `Alt+Space` (default) to **START** recording.
+   - Speak your thought.
+   - Press and **release** `Alt+Space` again to **STOP** recording.
+   - *Note: This is a toggle, not a hold-to-talk action. You must release the keys to activate.*
+5. **Done!** The text will appear wherever your cursor is!
 
 ## 🏗️ Architecture
 
@@ -74,8 +78,8 @@ flowchart LR
 ### Why Local Whisper?
 Privacy is paramount. Using WebAssembly-based Whisper means your voice data never has to leave your machine. It works completely offline and has zero latency overhead from network requests.
 
-### Why Push-to-Talk?
-Toggle buttons introduce friction ("Did I start recording?"). Push-to-talk mimics natural speech patterns—press when you speak, release when done. It's faster and less error-prone.
+### Why Toggle Recording?
+We use a global hotkey toggle (Press & Release) instead of hold-to-talk. This ensures reliability across different operating systems and preventing issues with key-up events getting swallowed by other applications. It also allows for longer dictations without finger fatigue.
 
 ### Why Auto-Paste?
 The goal is to reduce friction. Manually copying and pasting breaks flow. Auto-paste makes the app feel like a native extension of your keyboard. THIS REQUIRES ACCESSIBILITY PERMISSION.

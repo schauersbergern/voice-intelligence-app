@@ -1,5 +1,6 @@
 {
-  "name": "voice-intelligence-app",
+  "name": "voice-intelligence",
+  "productName": "Voice Intelligence",
   "version": "1.0.0",
   "private": true,
   "description": "macOS desktop app for voice capture, transcription, and LLM enrichment",
@@ -15,7 +16,7 @@
     "postinstall": "electron-builder install-app-deps",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
-    "test:e2e": "echo \"E2E tests require Playwright setup\" && exit 0"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

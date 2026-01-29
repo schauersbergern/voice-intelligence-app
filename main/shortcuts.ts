@@ -41,7 +41,7 @@ export function registerGlobalShortcuts(): boolean {
 
         // Register the toggle hotkey
         const success = globalShortcut.register(currentHotkey, () => {
-            console.log('Global hotkey triggered:', currentHotkey);
+            // Log removed
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send(IPC_CHANNELS.TOGGLE_RECORDING);
             }
@@ -52,7 +52,7 @@ export function registerGlobalShortcuts(): boolean {
             return false;
         }
 
-        console.log('Global shortcut registered:', currentHotkey);
+        // Log removed
         return true;
     } catch (err) {
         console.error('Failed to register global shortcuts:', err);

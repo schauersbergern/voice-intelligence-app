@@ -7,7 +7,7 @@ interface UseAudioRecorderReturn {
     state: RecordingState;
     error: string | null;
     duration: number;
-    startRecording: () => Promise<void>;
+    startRecording: (deviceId?: string) => Promise<void>;
     stopRecording: () => Promise<ArrayBuffer | null>;
 }
 
@@ -35,19 +35,23 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
      * Requests permission if not granted.
      * Sets up AudioContext and ScriptProcessor for raw data capture.
      */
-    const startRecording = useCallback(async () => {
+    const startRecording = useCallback(async (deviceId?: string) => {
         try {
             setError(null);
             setState('idle');
 
             // Request microphone permission
-            const stream = await navigator.mediaDevices.getUserMedia({
+            // If deviceId is provided and not 'default', use it
+            const constraints: MediaStreamConstraints = {
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
+                    deviceId: deviceId && deviceId !== 'default' ? { exact: deviceId } : undefined
                 }
-            });
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             mediaStreamRef.current = stream;
 
             // Create audio context (use device sample rate, we'll downsample later)

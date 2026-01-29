@@ -25,6 +25,7 @@ export const IPC_CHANNELS = {
     COPY_TO_CLIPBOARD: 'clipboard:copy',
     SET_HOTKEY: 'settings:set-hotkey',
     SETTINGS_CHANGED: 'settings:changed',
+    AUDIO_DEVICES_UPDATED: 'audio:devices-updated',
 } as const;
 
 // ============================================================================
@@ -59,6 +60,12 @@ export type EnrichmentMode = 'clean' | 'format' | 'summarize' | 'action' | 'emai
 
 /** LLM provider options */
 export type LLMProvider = 'openai' | 'anthropic';
+
+/** Audio input device */
+export interface AudioDevice {
+    deviceId: string;
+    label: string;
+}
 
 // ============================================================================
 // IPC API Interface
@@ -173,6 +180,12 @@ export interface ElectronAPI {
      * @returns Cleanup function to remove listener
      */
     onSettingsChanged: (callback: (settings: Partial<AppSettings>) => void) => () => void;
+
+    /**
+     * Update the list of available audio devices in the main process.
+     * @param devices - List of audio input devices
+     */
+    updateAudioDevices: (devices: AudioDevice[]) => Promise<void>;
 }
 
 export interface AppSettings {
@@ -182,4 +195,5 @@ export interface AppSettings {
     apiKey: string;
     llmProvider: LLMProvider;
     hotkey: string;
+    microphoneId: string;
 }

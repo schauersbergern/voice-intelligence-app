@@ -1,12 +1,12 @@
 import path from 'path';
 import { app, BrowserWindow, ipcMain, clipboard, powerMonitor } from 'electron';
-import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type LLMProvider } from '../shared/types';
+import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type LLMProvider, type AudioDevice } from '../shared/types';
 import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
 import { enrich, setEnrichmentMode, getEnrichmentMode, setLLMProvider } from './enrichment';
 import { setMainWindow, getMainWindow } from './window-manager';
 import { initializeShortcuts, cleanupShortcuts, updateHotkey, registerGlobalShortcuts } from './shortcuts';
 import { getAllSettings, saveSetting, initStore } from './store';
-import { createTray, updateTrayIcon, rebuildMenu } from './tray';
+import { createTray, updateTrayIcon, rebuildMenu, updateAudioDevices } from './tray';
 
 const isDev = !app.isPackaged;
 
@@ -108,6 +108,11 @@ function registerIpcHandlers(): void {
             await saveSetting('hotkey', accelerator);
         }
         return success;
+    });
+
+    // --- Audio Devices Handler ---
+    ipcMain.handle(IPC_CHANNELS.AUDIO_DEVICES_UPDATED, async (_event, devices: AudioDevice[]) => {
+        await updateAudioDevices(devices);
     });
 }
 

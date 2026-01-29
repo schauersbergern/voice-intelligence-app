@@ -3,14 +3,16 @@
  * Provides quick access to settings and app control from the system tray
  */
 
-import { Tray, Menu, nativeImage, app, MenuItemConstructorOptions } from 'electron';
+import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type AudioDevice } from '../shared/types';
+import { Menu, MenuItemConstructorOptions, Tray, app, nativeImage } from 'electron';
 import { getMainWindow } from './window-manager';
 import { getAllSettings, saveSetting } from './store';
 import { setWhisperMode } from './whisper-handler';
 import { setEnrichmentMode } from './enrichment';
-import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode } from '../shared/types';
 
 let tray: Tray | null = null;
+let audioDevices: AudioDevice[] = [];
+
 
 // Crisp 22x22 microphone icon - white on black (not template, keeps white in dark mode)
 const ICON_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAIAAABL1vtsAAAAAXNSR0IArs4c6QAAAHhlWElmTU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAIdpAAQAAAABAAAATgAAAAAAAAEsAAAAAQAAASwAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAABagAwAEAAAAAQAAABYAAAAASU13RgAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAUJJREFUOBG1UbuKg1AU9Jk0qaxsLATFMj8h+kX+jj+ggqCl+Bd2ips6jViJqLuTXBDRcwPJ7p5CZo5n5s49VxQEQRRFfD+vX+ohlz4//K+USCG/8FJV1fM827Zvt9uyLOTkqz3IshyG4fezAEDftjBNcxgGZgEAyrPgrvN8Pq8hAUBJCzRpC0mScP56fwBQNEkX+oa+7wdB4DiOoiiQzfNsGEbf93Vd71wQkDbWNK1t23EcmQAAFM2dnlFpvfD29zRNXdfhy5pIsaXbSWA6RVVVuq4nScKm4zgGRXMnZlQmU9zvd8uyLpdLlmVlWZ5Op6ZpgI8WDzlpwUZd18X5KICjmHUgfyycV0VRXK9X/AXgzTz6vBQQ53n+9SwA5nU0epUCD5mmaRRFkGEX6wMfXbgpiFGqhRT0o1LD/9bjrfK9A38AcKyHRTqTgH4AAAAASUVORK5CYII=';
@@ -53,6 +55,10 @@ export async function rebuildMenu(): Promise<void> {
         const menuTemplate: MenuItemConstructorOptions[] = [
             { label: '🎙 Voice Intelligence', enabled: false },
             { type: 'separator' },
+            {
+                label: 'Microphone',
+                submenu: createMicrophoneSubmenu(settings.microphoneId)
+            },
             {
                 label: 'Transcription Engine',
                 submenu: [
@@ -130,6 +136,38 @@ export async function rebuildMenu(): Promise<void> {
 }
 
 /**
+ * Create microphone submenu items
+ */
+function createMicrophoneSubmenu(selectedId: string): MenuItemConstructorOptions[] {
+    if (audioDevices.length === 0) {
+        return [{ label: 'No devices found', enabled: false }];
+    }
+
+    return audioDevices.map(device => ({
+        label: device.label || `Microphone ${device.deviceId}`,
+        type: 'radio',
+        checked: device.deviceId === selectedId || (selectedId === 'default' && device.deviceId === 'default'),
+        click: () => handleMicrophoneChange(device.deviceId)
+    }));
+}
+
+/**
+ * Update the list of available audio devices
+ * Called from renderer via IPC
+ */
+export async function updateAudioDevices(devices: AudioDevice[]): Promise<void> {
+    // Only update if changed deep equality check could be done but for now just length or simple check
+    // Simple check to avoid constant rebuilding:
+    const isDifferent = devices.length !== audioDevices.length ||
+        devices.some((d, i) => d.deviceId !== audioDevices[i].deviceId || d.label !== audioDevices[i].label);
+
+    if (isDifferent) {
+        audioDevices = devices;
+        await rebuildMenu();
+    }
+}
+
+/**
  * Update the tray icon to reflect the current recording state.
  * @param recording - Whether recording is currently active
  */
@@ -198,6 +236,21 @@ async function handleEnrichmentChange(mode: EnrichmentMode): Promise<void> {
     const win = getMainWindow();
     if (win && !win.isDestroyed()) {
         win.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, { enrichmentMode: mode });
+    }
+}
+
+/**
+ * Handle microphone change from menu.
+ * Persists selection to store and notifies all renderer windows.
+ * @param deviceId - The device ID of the selected microphone
+ */
+async function handleMicrophoneChange(deviceId: string): Promise<void> {
+    await saveSetting('microphoneId', deviceId);
+
+    // Notify renderer
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+        win.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, { microphoneId: deviceId });
     }
 }
 

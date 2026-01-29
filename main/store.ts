@@ -7,7 +7,8 @@ const schema = {
     enrichmentMode: { type: 'string', enum: ['none', 'clean', 'format', 'summarize', 'action', 'email', 'notes', 'commit', 'tweet', 'slack'], default: 'none' },
     apiKey: { type: 'string', default: '' },
     llmProvider: { type: 'string', enum: ['openai', 'anthropic'], default: 'openai' },
-    hotkey: { type: 'string', default: 'Alt+Space' }
+    hotkey: { type: 'string', default: 'Alt+Space' },
+    microphoneId: { type: 'string', default: 'default' }
 } as const;
 
 // Store instance (lazy loaded)
@@ -35,7 +36,8 @@ export async function getAllSettings(): Promise<AppSettings> {
         enrichmentMode: s.get('enrichmentMode'),
         apiKey: s.get('apiKey'),
         llmProvider: s.get('llmProvider'),
-        hotkey: s.get('hotkey')
+        hotkey: s.get('hotkey'),
+        microphoneId: s.get('microphoneId')
     };
 }
 
