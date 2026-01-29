@@ -11,18 +11,28 @@
 - 🎙️ **Push-to-Talk**: Global hotkey (default `Alt+Space`) to record instantly from any app.
 - 🔒 **Local Privacy**: Transcribe offline using WebAssembly-powered Whisper (zero data leaves your device).
 - ☁️ **Cloud Accuracy**: Optional OpenAI Whisper API integration for highest accuracy.
-- 🧠 **AI Enrichment**: Use LLMs (OpenAI/Anthropic) to clean, format, summarize, or extract action items.
+- 🧠 **AI Enrichment**: Use OpenAI to clean, format, summarize, or extract action items.
 - 📋 **Auto-Paste**: Transcription is automatically pasted into your active text field.
-- ⚙️ **Customizable**: Configurable hotkeys, language selection, and enrichment prompts.
-- 🖥️ **Menu Bar**: Unobtrusive menu bar app for quick mode switching.
+- ⚙️ **Customizable**: Change hotkeys, language, and enrichment settings via the menu bar widget or app settings.
+- 🖥️ **Menu Bar**: Unobtrusive menu bar widget for quick mode switching.
+
+![Menu Bar Widget](/docs/assets/menubar-widget.png)
 
 ## 🚀 Quick Start
 
 1. **Download** the latest release (`.dmg`) and drag to Applications.
-2. **Launch** the app and grant **Microphone Permissions**.
-3. **Press** `Alt+Space` (or your custom hotkey) to start recording.
-4. **Speak** your thought.
-5. **Release** keys to stop. The text will appear wherever your cursor is!
+2. **Launch** the app.
+3. **IMPORTANT: Enable Accessibility Permission**
+   - The app uses accessibility features to paste text directly into your active application.
+   - Go to **System Settings > Privacy & Security > Accessibility**.
+   - Toggle **Voice Intelligence** to ON.
+   - *Without this, Auto-Paste will not work and you will need to manually copy text.*
+   
+   ![Accessibility Permission](/docs/assets/accessibility-permission.png)
+
+4. **Press** `Alt+Space` (default) to start recording.
+5. **Speak** your thought.
+6. **Release** keys to stop. The text will appear wherever your cursor is!
 
 ## 🏗️ Architecture
 
@@ -56,7 +66,7 @@ flowchart LR
 - **Next.js (Nextron)**: React-based renderer for a modern, responsive UI.
 - **TypeScript**: Strict type safety across main and renderer processes.
 - **Whisper**: State-of-the-art speech recognition (Local via Transformers.js, Cloud via OpenAI).
-- **LLMs**: GPT-4o-mini and Claude 3 Haiku for intelligent text enrichment.
+- **LLMs**: GPT-4o-mini for intelligent text enrichment.
 - **Vitest**: Unit and integration testing.
 
 ## 💡 Design Decisions
@@ -68,7 +78,7 @@ Privacy is paramount. Using WebAssembly-based Whisper means your voice data neve
 Toggle buttons introduce friction ("Did I start recording?"). Push-to-talk mimics natural speech patterns—press when you speak, release when done. It's faster and less error-prone.
 
 ### Why Auto-Paste?
-The goal is to reduce friction. Manually copying and pasting breaks flow. Auto-paste makes the app feel like a native extension of your keyboard.
+The goal is to reduce friction. Manually copying and pasting breaks flow. Auto-paste makes the app feel like a native extension of your keyboard. THIS REQUIRES ACCESSIBILITY PERMISSION.
 
 ## 💻 Development
 
@@ -99,9 +109,16 @@ npm test
 
 ### Building
 
+**macOS:**
 ```bash
 # Build for macOS (Universal DMG)
 npm run build:mac
+```
+
+**Windows:**
+```bash
+# Build for Windows (NSIS Installer)
+npm run build:win
 ```
 
 ## 📂 Project Structure
