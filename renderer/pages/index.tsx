@@ -143,6 +143,9 @@ export default function Home(): JSX.Element {
                 <meta name="description" content="Voice capture, transcription, and LLM enrichment" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
             </Head>
+
+            {/* Title bar drag region for window dragging */}
+            <div className="drag-region" />
             <main style={styles.main}>
                 <h1 style={styles.title}>Voice Intelligence</h1>
                 <p style={styles.subtitle}>

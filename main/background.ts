@@ -83,7 +83,7 @@ function createWindow(): void {
         center: true,
         title: 'Voice Intelligence',
         titleBarStyle: 'hiddenInset',
-        vibrancy: 'under-window',
+        backgroundColor: '#1a1a2e',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,

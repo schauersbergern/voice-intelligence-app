@@ -54,17 +54,25 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Make title bar draggable */
-body {
+/* Title bar drag region - covers the top area with hidden inset style */
+.drag-region {
     -webkit-app-region: drag;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 38px;
+    z-index: 9999;
 }
 
-/* Make interactive elements clickable */
+/* Make interactive elements clickable (not draggable) */
 button,
 input,
 select,
 a,
-[role="button"] {
+textarea,
+[role="button"],
+.no-drag {
     -webkit-app-region: no-drag;
 }
 
