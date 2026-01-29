@@ -1,11 +1,12 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, powerMonitor } from 'electron';
 import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type LLMProvider } from '../shared/types';
 import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
 import { enrich, setEnrichmentMode, getEnrichmentMode, setLLMProvider } from './enrichment';
-import { setMainWindow } from './window-manager';
-import { initializeShortcuts, cleanupShortcuts } from './shortcuts';
+import { setMainWindow, getMainWindow } from './window-manager';
+import { initializeShortcuts, cleanupShortcuts, updateHotkey, registerGlobalShortcuts } from './shortcuts';
 import { getAllSettings, saveSetting, initStore } from './store';
+import { createTray, updateTrayIcon, rebuildMenu } from './tray';
 
 const isDev = !app.isPackaged;
 
@@ -53,6 +54,7 @@ function registerIpcHandlers(): void {
 
     ipcMain.handle(IPC_CHANNELS.SET_RECORDING_STATE, async (_event, recording: boolean) => {
         isRecording = recording;
+        updateTrayIcon(recording);
     });
 
     ipcMain.handle(IPC_CHANNELS.SET_ENRICHMENT_MODE, async (_event, mode: EnrichmentMode) => {
@@ -91,10 +93,21 @@ function registerIpcHandlers(): void {
 
     ipcMain.handle(IPC_CHANNELS.SAVE_SETTING, async (_event, key: string, value: any) => {
         await saveSetting(key, value);
+        // Sync app settings changes to tray menu
+        rebuildMenu();
     });
 
     ipcMain.handle(IPC_CHANNELS.COPY_TO_CLIPBOARD, async (_event, text: string) => {
         clipboard.writeText(text);
+    });
+
+    // --- Hotkey Handler ---
+    ipcMain.handle(IPC_CHANNELS.SET_HOTKEY, async (_event, accelerator: string) => {
+        const success = updateHotkey(accelerator);
+        if (success) {
+            await saveSetting('hotkey', accelerator);
+        }
+        return success;
     });
 }
 
@@ -125,15 +138,17 @@ function createWindow(): void {
     // Store reference in window manager
     setMainWindow(mainWindow);
 
+    // Intercept close to hide instead of destroy (background operation)
+    mainWindow.on('close', (event) => {
+        event.preventDefault();
+        mainWindow.hide();
+    });
+
     const url = isDev
         ? 'http://localhost:8888'
         : `file://${path.join(__dirname, 'index.html')}`;
 
     mainWindow.loadURL(url);
-
-    mainWindow.on('closed', () => {
-        setMainWindow(null);
-    });
 
     // Open DevTools in development
     if (isDev) {
@@ -147,15 +162,35 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
     await initStore();
+
+    // Restore saved settings to handlers
+    const settings = await getAllSettings();
+    if (settings.apiKey) {
+        setApiKey(settings.apiKey);
+    }
+    if (settings.whisperMode) {
+        setWhisperMode(settings.whisperMode);
+    }
+    if (settings.enrichmentMode) {
+        setEnrichmentMode(settings.enrichmentMode);
+    }
+
     registerIpcHandlers();
     createWindow();
 
+    // Create system tray
+    createTray();
+
     // Initialize global shortcuts (PTT)
-    const { getMainWindow } = require('./window-manager');
     const win = getMainWindow();
     if (win) {
-        initializeShortcuts(win);
+        await initializeShortcuts(win);
     }
+
+    // Re-register shortcuts after system wake
+    powerMonitor.on('resume', () => {
+        registerGlobalShortcuts();
+    });
 });
 
 app.on('will-quit', () => {
@@ -163,16 +198,16 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-    // On macOS, keep app in dock unless explicitly quit
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    // Don't quit - keep running in tray
 });
 
 app.on('activate', () => {
-    // On macOS, re-create window when dock icon clicked and no windows exist
-    const { getMainWindow } = require('./window-manager');
-    if (getMainWindow() === null) {
+    // On macOS, show window when dock icon clicked
+    const win = getMainWindow();
+    if (win) {
+        win.show();
+        win.focus();
+    } else {
         createWindow();
     }
 });

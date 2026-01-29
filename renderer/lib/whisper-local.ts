@@ -42,6 +42,11 @@ export async function initializeWhisper(
             'automatic-speech-recognition',
             'Xenova/whisper-small',  // Best accuracy, ~460MB, supports 99 languages
             {
+                // Enable local caching - models stored in IndexedDB
+                // The library should cache by default, but we explicitly enable it
+                cache_dir: undefined, // Use default IndexedDB cache
+                local_files_only: false, // Allow downloading if not cached
+                revision: 'main', // Explicit revision for cache key consistency
                 progress_callback: (data: { status: string; file?: string; progress?: number }) => {
                     // Track progress for each file to calculate a smooth global percentage
                     // Weights are approximate based on file size

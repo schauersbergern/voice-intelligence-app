@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { RecordButton } from '../components/RecordButton';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
+import { HotkeyInput } from '../components/HotkeyInput';
 import { transcribeLocal, isModelReady, initializeWhisper } from '../lib/whisper-local';
 import type { TranscriptionResult, EnrichmentMode, WhisperMode } from '../../shared/types';
 
@@ -18,10 +19,15 @@ export default function Home(): JSX.Element {
     const [showSettings, setShowSettings] = useState(false);
     const [hotkeyTriggered, setHotkeyTriggered] = useState(false);
     const [modelLoadingStatus, setModelLoadingStatus] = useState<string | null>(null);
+    const [hotkey, setHotkey] = useState<string>('Alt+Space');
 
     // Ref to track recording state for hotkey handler
     const stateRef = useRef(state);
     stateRef.current = state;
+
+    // Ref to track transcribing state
+    const transcribingRef = useRef(transcribing);
+    transcribingRef.current = transcribing;
 
     useEffect(() => {
         if (window.electronAPI) {
@@ -30,8 +36,22 @@ export default function Home(): JSX.Element {
                 setWhisperLanguage(settings.whisperLanguage);
                 setEnrichmentModeState(settings.enrichmentMode);
                 setApiKeyState(settings.apiKey);
+                if (settings.hotkey) setHotkey(settings.hotkey);
             }).catch(() => { });
         }
+    }, []);
+
+    // Listen for settings changes from menu bar
+    useEffect(() => {
+        if (!window.electronAPI) return;
+        const cleanup = window.electronAPI.onSettingsChanged((changed) => {
+            if (changed.whisperMode !== undefined) setWhisperModeState(changed.whisperMode);
+            if (changed.whisperLanguage !== undefined) setWhisperLanguage(changed.whisperLanguage);
+            if (changed.enrichmentMode !== undefined) setEnrichmentModeState(changed.enrichmentMode);
+            if (changed.apiKey !== undefined) setApiKeyState(changed.apiKey);
+            if (changed.hotkey !== undefined) setHotkey(changed.hotkey);
+        });
+        return cleanup;
     }, []);
 
     // Listen for global hotkey toggle
@@ -41,11 +61,29 @@ export default function Home(): JSX.Element {
         return cleanup;
     }, []);
 
+    // Debounce ref to prevent rapid double-toggle
+    const lastToggleTimeRef = useRef<number>(0);
+    const DEBOUNCE_MS = 500; // Ignore toggles within 500ms
+
     // Handle hotkey toggle
     useEffect(() => {
         if (hotkeyTriggered) {
             setHotkeyTriggered(false);
+
+            // Debounce: ignore if last toggle was too recent
+            const now = Date.now();
+            if (now - lastToggleTimeRef.current < DEBOUNCE_MS) {
+                console.log('Hotkey debounced - ignoring rapid toggle');
+                return;
+            }
+            lastToggleTimeRef.current = now;
+
             if (stateRef.current === 'idle' || stateRef.current === 'error') {
+                // Don't start recording if we're still transcribing
+                if (transcribingRef.current) {
+                    console.log('Hotkey ignored - transcription in progress');
+                    return;
+                }
                 handleStartRecording();
             } else if (stateRef.current === 'recording') {
                 handleStopRecording();
@@ -66,6 +104,23 @@ export default function Home(): JSX.Element {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [transcription]);
+
+    // Detect platform on client side only to avoid hydration mismatch
+    const [isMac, setIsMac] = useState(false);
+    useEffect(() => {
+        setIsMac(typeof navigator !== 'undefined' && navigator.platform.includes('Mac'));
+    }, []);
+
+    const formatHotkeyDisplay = (accelerator: string): string => {
+        if (!accelerator) return '';
+        return accelerator
+            .replace(/CommandOrControl/gi, isMac ? '⌘' : 'Ctrl')
+            .replace(/Command/gi, '⌘')
+            .replace(/Control/gi, isMac ? '⌃' : 'Ctrl')
+            .replace(/Alt/gi, isMac ? '⌥' : 'Alt')
+            .replace(/Shift/gi, isMac ? '⇧' : 'Shift')
+            .replace(/\+/g, ' + ');
+    };
 
     const formatDuration = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
@@ -257,7 +312,7 @@ export default function Home(): JSX.Element {
                         onClick={handleRecordClick}
                         processingText={transcribing ? '✨ Processing...' : 'Processing...'}
                     />
-                    <span style={styles.hint}>Press Enter or ⌘+Shift+Space</span>
+                    <span style={styles.hint}>Press {formatHotkeyDisplay(hotkey)} to toggle</span>
                 </div>
 
                 {/* Transcript Result */}
@@ -324,7 +379,8 @@ export default function Home(): JSX.Element {
                                 </div>
                             )}
 
-                            {(whisperMode === 'api' || enrichmentMode !== 'none') && (
+
+                            {whisperMode === 'api' && (
                                 <div style={styles.settingRow}>
                                     <label style={styles.label}>API Key:</label>
                                     <input
@@ -345,33 +401,50 @@ export default function Home(): JSX.Element {
 
                         <div style={styles.settingsSection}>
                             <h3 style={styles.sectionTitle}>✨ Enrichment</h3>
-                            <div style={styles.settingRow}>
-                                <label style={styles.label}>Mode:</label>
-                                <select
-                                    style={styles.select}
-                                    value={enrichmentMode}
-                                    onChange={(e) => handleEnrichmentModeChange(e.target.value as EnrichmentMode)}
-                                >
-                                    <option value="none">🔇 None (raw)</option>
-                                    <option value="clean">🧹 Clean</option>
-                                    <option value="format">📝 Format</option>
-                                    <option value="summarize">📋 Summarize</option>
-                                    <option value="action">✅ Action Items</option>
-                                    <option value="email">✉️ Email</option>
-                                    <option value="notes">📒 Notes</option>
-                                    <option value="commit">💻 Git Commit</option>
-                                    <option value="tweet">🐦 Tweet Thread</option>
-                                    <option value="slack">💬 Slack Message</option>
-                                </select>
-                            </div>
-                            {enrichmentMode !== 'none' && !apiKey && (
-                                <div style={{ ...styles.settingRow, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                    API Key required for Enrichment
+                            {whisperMode === 'api' ? (
+                                <>
+                                    <div style={styles.settingRow}>
+                                        <label style={styles.label}>Mode:</label>
+                                        <select
+                                            style={styles.select}
+                                            value={enrichmentMode}
+                                            onChange={(e) => handleEnrichmentModeChange(e.target.value as EnrichmentMode)}
+                                        >
+                                            <option value="none">🔇 None (raw)</option>
+                                            <option value="clean">🧹 Clean</option>
+                                            <option value="format">📝 Format</option>
+                                            <option value="summarize">📋 Summarize</option>
+                                            <option value="action">✅ Action Items</option>
+                                            <option value="email">✉️ Email</option>
+                                            <option value="notes">📒 Notes</option>
+                                            <option value="commit">💻 Git Commit</option>
+                                            <option value="tweet">🐦 Tweet Thread</option>
+                                            <option value="slack">💬 Slack Message</option>
+                                        </select>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ ...styles.settingRow, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                                    Enrichment requires Cloud Mode
                                 </div>
                             )}
                         </div>
 
-                        <p style={styles.hotkeyHint}>⌘+Shift+Space to toggle recording from anywhere</p>
+                        <div style={styles.settingsSection}>
+                            <HotkeyInput
+                                currentHotkey={hotkey}
+                                onHotkeyChange={async (accelerator) => {
+                                    if (!window.electronAPI) return false;
+                                    const success = await window.electronAPI.setHotkey(accelerator);
+                                    if (success) {
+                                        setHotkey(accelerator);
+                                    }
+                                    return success;
+                                }}
+                            />
+                        </div>
+
+                        <p style={styles.hotkeyHint}>{formatHotkeyDisplay(hotkey)} to toggle recording from anywhere</p>
                     </div>
                 )}
             </main>

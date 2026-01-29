@@ -23,6 +23,8 @@ export const IPC_CHANNELS = {
     SAVE_SETTING: 'settings:save-one',
     TRIGGER_PASTE: 'automation:trigger-paste',
     COPY_TO_CLIPBOARD: 'clipboard:copy',
+    SET_HOTKEY: 'settings:set-hotkey',
+    SETTINGS_CHANGED: 'settings:changed',
 } as const;
 
 // ============================================================================
@@ -157,6 +159,20 @@ export interface ElectronAPI {
      * @param text - Text to copy
      */
     copyToClipboard: (text: string) => Promise<void>;
+
+    /**
+     * Set the global hotkey.
+     * @param accelerator - Electron accelerator string
+     * @returns Promise resolving to true if successful, false if conflict
+     */
+    setHotkey: (accelerator: string) => Promise<boolean>;
+
+    /**
+     * Listen for settings changes from main process (e.g., menu bar changes).
+     * @param callback - Function called with partial settings object
+     * @returns Cleanup function to remove listener
+     */
+    onSettingsChanged: (callback: (settings: Partial<AppSettings>) => void) => () => void;
 }
 
 export interface AppSettings {
@@ -165,4 +181,5 @@ export interface AppSettings {
     enrichmentMode: EnrichmentMode;
     apiKey: string;
     llmProvider: LLMProvider;
+    hotkey: string;
 }

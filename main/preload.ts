@@ -59,6 +59,17 @@ const api: ElectronAPI = {
 
     copyToClipboard: (text: string) =>
         ipcRenderer.invoke(IPC_CHANNELS.COPY_TO_CLIPBOARD, text),
+
+    setHotkey: (accelerator: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SET_HOTKEY, accelerator),
+
+    onSettingsChanged: (callback: (settings: Record<string, unknown>) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, settings: Record<string, unknown>) => callback(settings);
+        ipcRenderer.on(IPC_CHANNELS.SETTINGS_CHANGED, handler);
+        return () => {
+            ipcRenderer.removeListener(IPC_CHANNELS.SETTINGS_CHANGED, handler);
+        };
+    },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

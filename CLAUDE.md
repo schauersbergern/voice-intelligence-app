@@ -6,143 +6,125 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 macOS desktop app that captures voice input, transcribes it (local Whisper or OpenAI API), and enriches it through LLM processing. Built with Electron + Next.js using the Nextron framework.
 
-## Development Workflow
-
-This project is built incrementally via missions defined in [docs/specs/](docs/specs/). Each mission has its own spec file with objectives, success criteria, and implementation steps. Work through missions sequentially.
-
-**Planning process:** For each mission, first create an implementation plan in `docs/plans/mission-N-plan.md` before writing code. See [docs/PROMPTS.md](docs/PROMPTS.md) for the complete playbook of prompts to use for each mission phase.
-
 ## Quick Commands
 
 ```bash
-npm run dev      # Start development mode (launches Electron + Next.js hot reload)
-npm run build    # Compile TypeScript and package for distribution (.dmg on macOS)
-npm test         # Run test suite
+npm run dev      # Start development mode (Electron + Next.js hot reload)
+npm run build    # Package for distribution
+npm run build:mac # Build macOS DMG
+npx tsc --noEmit # Type check without emitting
 ```
 
 ## Architecture
 
 ```
-main/           → Electron main process (IPC handlers, Whisper, settings, window mgmt)
-renderer/       → Next.js frontend (UI, hooks, pages)
-  ├─ pages/     → Next.js pages (index.tsx, settings.tsx, etc.)
-  ├─ hooks/     → React hooks (useAudioRecorder, etc.)
-  └─ types/     → Type declarations (electron.d.ts for window.electronAPI)
-shared/         → TypeScript types shared between main and renderer processes
-resources/      → Static assets (Whisper models, icons)
-  └─ models/    → Whisper .bin files (gitignored, user downloads manually)
-app/            → Nextron build output (compiled main + preload JS, gitignored)
-docs/
-  ├─ specs/     → Mission specifications
-  ├─ plans/     → Implementation plans per mission
-  └─ PROMPTS.md → Step-by-step prompts for each mission phase
+main/           → Electron main process
+renderer/       → Next.js frontend (runs in Chromium)
+  ├─ pages/     → Next.js pages (index.tsx main UI)
+  ├─ components/→ React components (RecordButton, TranscriptDisplay, LoadingState)
+  ├─ hooks/     → useAudioRecorder (microphone capture)
+  ├─ lib/       → whisper-local.ts (WASM transcription)
+  └─ utils/     → audio-utils.ts (WAV encoding)
+shared/         → TypeScript types shared between processes
 ```
 
-**Data flow:** Renderer captures audio → IPC to main → Whisper transcription → LLM enrichment → IPC response → UI display
+### Data Flow
 
-**Heavy operations:** Use `utilityProcess` for model loading and transcription to avoid blocking the main thread.
+**Local mode (default):**
+```
+Renderer: Mic capture → WAV encoding → WASM Whisper transcription → IPC to main → LLM enrichment → IPC response → UI
+```
 
-## Build System
+**API mode:**
+```
+Renderer: Mic capture → WAV encoding → IPC to main → OpenAI Whisper API → LLM enrichment → IPC response → UI
+```
 
-**Nextron compilation:**
-- `npm run dev` compiles TypeScript in `main/` and `shared/` to `app/` directory
-- `main/background.ts` → `app/background.js` (Electron main process entry)
-- `main/preload.ts` → `app/preload.js` (loaded by BrowserWindow)
-- Renderer runs on Next.js dev server (http://localhost:8888) in development
-- In production, renderer is statically exported to `renderer/out/`
-
-**TypeScript configs:**
-- Root `tsconfig.json`: Strict mode for main process and shared types
-- `renderer/tsconfig.json`: Separate config for Next.js (extends Next.js defaults)
-
-## Audio Requirements
-
-Whisper requires specific audio format:
-- **Sample rate:** 16kHz (critical - other rates will fail or give poor results)
-- **Channels:** Mono (stereo will be downmixed)
-- **Format:** WAV (16-bit PCM)
-
-Audio capture happens in renderer via Web Audio API, then transfers to main process via IPC for transcription.
+**Key insight:** Local Whisper runs in the **renderer process** using `@huggingface/transformers` (WebAssembly), not the main process. This avoids native module packaging complexity. Only API transcription goes through main process.
 
 ## Critical Guardrails
 
 - **NEVER modify main/preload.ts without explicit approval** - security-critical file
 - **NEVER expose full ipcRenderer to renderer** - use contextBridge only
-- Don't use Next.js API routes - use IPC handlers in main process instead
+- Don't use Next.js API routes - use IPC handlers in main process
 - Don't use SSR features - Electron requires static export (`output: 'export'`)
-- Keep dependencies minimal - every native module complicates packaging
 - Always read files before editing them
 
-## IPC Communication Pattern
+## Audio Requirements
 
-**Channel naming convention:**
-```
-<domain>:<action>
-audio:start-recording
-whisper:transcribe
-settings:get
-```
+Whisper requires specific format:
+- **Sample rate:** 16kHz (critical)
+- **Channels:** Mono
+- **Format:** WAV (16-bit PCM)
 
-**Current channels:**
+Audio capture in `renderer/hooks/useAudioRecorder.ts`, WAV encoding in `renderer/utils/audio-utils.ts`.
+
+## IPC Communication
+
+**Channel definitions in `shared/types.ts`:**
 ```typescript
-IPC_CHANNELS.PING                  // Test IPC (returns "pong")
-// Future channels (Mission 3+):
-// AUDIO_START: 'audio:start-recording'
-// AUDIO_STOP: 'audio:stop-recording'
-// WHISPER_TRANSCRIBE: 'whisper:transcribe'
-// WHISPER_SET_MODE: 'whisper:set-mode'  // 'local' | 'api'
-// SETTINGS_GET: 'settings:get'
-// SETTINGS_SET: 'settings:set'
-// ENRICHMENT_PROCESS: 'enrichment:process'
+IPC_CHANNELS.SEND_AUDIO           // Send WAV for transcription (API mode)
+IPC_CHANNELS.ENRICH_TRANSCRIPTION // LLM enrichment
+IPC_CHANNELS.SET_WHISPER_MODE     // 'local' | 'api'
+IPC_CHANNELS.GET_SETTINGS         // Retrieve all settings
+IPC_CHANNELS.SAVE_SETTING         // Persist single setting
+IPC_CHANNELS.COPY_TO_CLIPBOARD    // System clipboard
+IPC_CHANNELS.TRIGGER_PASTE        // Cmd+V automation
 ```
 
-**Type safety:**
-1. Define channel names in `shared/types.ts` as const
+**Type safety flow:**
+1. Define channel names in `shared/types.ts` as const object
 2. Define method signatures in `ElectronAPI` interface
 3. Implement in `main/preload.ts` using contextBridge
 4. Declare `window.electronAPI` in `renderer/types/electron.d.ts`
-5. Register handlers in `main/background.ts` using ipcMain.handle()
+5. Register handlers in `main/background.ts` using `ipcMain.handle()`
 
-All IPC uses `ipcRenderer.invoke()` for request/response pattern (no events/listeners).
-
-## File Purposes
+## Key Files
 
 | File | Purpose |
 |------|---------|
-| main/background.ts | App entry, window management, IPC handler registration |
-| main/preload.ts | Secure IPC bridge via contextBridge (SECURITY CRITICAL) |
-| shared/types.ts | IPC channel names, ElectronAPI interface, shared domain types |
-| renderer/types/electron.d.ts | Augments Window interface with electronAPI property |
-| renderer/pages/index.tsx | Main recording/transcript UI |
-| renderer/pages/_app.tsx | Next.js app wrapper (global styles, providers) |
-| package.json | Main project config, scripts, Electron + Next.js dependencies |
+| main/background.ts | App entry, window creation, IPC handler registration |
+| main/preload.ts | contextBridge implementation (SECURITY CRITICAL) |
+| main/whisper-handler.ts | Routes to whisper-api.ts (local handled in renderer) |
+| main/whisper-api.ts | OpenAI Whisper API client |
+| main/enrichment.ts | LLM processing (OpenAI/Anthropic) |
+| main/enrichment-prompts.ts | System prompts per enrichment mode |
+| main/store.ts | Settings persistence via electron-store |
+| main/shortcuts.ts | Global hotkey registration (Cmd+Shift+Space) |
+| main/window-manager.ts | Window visibility and focus management |
+| renderer/lib/whisper-local.ts | WASM Whisper via @huggingface/transformers |
+| renderer/hooks/useAudioRecorder.ts | Microphone capture with Web Audio API |
+| renderer/pages/index.tsx | Main UI orchestrating record/transcribe/display |
+| shared/types.ts | All IPC channels, ElectronAPI interface, domain types |
 
-Future files (Mission 3+):
-- main/whisper-handler.ts - Routes transcription to local or API
-- main/whisper-local.ts - Local whisper.cpp bindings
-- main/whisper-api.ts - OpenAI Whisper API client
-- main/enrichment.ts - LLM processing pipeline
-- renderer/pages/settings.tsx - API keys, mode selection, hotkey config
-- renderer/hooks/useAudioRecorder.ts - Microphone capture logic
+## Settings Persistence
+
+Settings stored via `electron-store` in `main/store.ts`:
+- `whisperMode`: 'local' | 'api'
+- `whisperLanguage`: Language code for transcription
+- `enrichmentMode`: 'none' | 'clean' | 'format' | 'summarize' | 'action' | 'email' | 'notes' | 'commit' | 'tweet' | 'slack'
+- `apiKey`: OpenAI API key
+- `llmProvider`: 'openai' | 'anthropic'
 
 ## Development Tips
 
-**Hot reload behavior:**
-- Renderer changes (React, UI) → Hot reload instantly
-- Main process changes (background.ts, preload.ts) → Full app restart required
-- Type changes (shared/types.ts) → May need manual restart
+**Hot reload:**
+- Renderer changes → Hot reload instantly
+- Main process changes → Full app restart required (`Cmd+R` or restart `npm run dev`)
 
 **Common issues:**
-- "electronAPI is not defined" → preload.ts not loading, check webPreferences.preload path
-- TypeScript errors in renderer about window.electronAPI → Check renderer/types/electron.d.ts exists
-- Audio not recording → Check microphone permissions in macOS System Settings
-- Build fails with native modules → Check electron-builder asarUnpack config
+- "electronAPI is not defined" → Check preload.ts is loading (webPreferences.preload path)
+- Model loading slow on first run → WASM model (~460MB) downloads and caches automatically
+- Audio not recording → Check macOS microphone permissions
 
 **Debugging:**
-- Development mode opens DevTools automatically (main/background.ts:49)
-- Use `console.log` in main process → shows in terminal running `npm run dev`
-- Use `console.log` in renderer → shows in DevTools console
+- Main process logs → Terminal running `npm run dev`
+- Renderer logs → DevTools console (opens automatically in dev)
+
+## Development Workflow
+
+Missions in `docs/specs/` define incremental feature development. Missions 1-4 are complete (foundation, IPC, audio capture, Whisper). See `docs/PROMPTS.md` for prompt playbook.
 
 ## Session Notes
 
-If context is getting heavy, dump progress to `docs/session-notes/[date].md` before `/clear`. Include completed items, current state, next steps, and blockers.
+If context is getting heavy, dump progress to `docs/session-notes/[date].md` before `/clear`.

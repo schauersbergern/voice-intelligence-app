@@ -1,55 +1,92 @@
 /**
  * Global keyboard shortcuts management using Electron's native globalShortcut
- * Replaces uiohook-napi to prevent fatal crashes
+ * Supports configurable hotkeys stored in electron-store
  */
 
 import { globalShortcut, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/types';
+import { initStore } from './store';
 
-// Hotkey definition
-const HOTKEY = 'CommandOrControl+Shift+Space';
+// Default hotkey
+const DEFAULT_HOTKEY = 'Alt+Space';
 
 let mainWindow: BrowserWindow | null = null;
+let currentHotkey: string = DEFAULT_HOTKEY;
 
 /**
  * Initialize global shortcuts
  */
-export function initializeShortcuts(window: BrowserWindow) {
+export async function initializeShortcuts(window: BrowserWindow): Promise<void> {
     mainWindow = window;
+
+    // Load hotkey from store
+    try {
+        const store = await initStore();
+        currentHotkey = store.get('hotkey') || DEFAULT_HOTKEY;
+    } catch {
+        currentHotkey = DEFAULT_HOTKEY;
+    }
+
     registerGlobalShortcuts();
 }
 
-export function registerGlobalShortcuts() {
+/**
+ * Register the current hotkey
+ * @returns true if successful, false if failed
+ */
+export function registerGlobalShortcuts(): boolean {
     try {
         // Unregister first to be safe
         globalShortcut.unregisterAll();
 
         // Register the toggle hotkey
-        const ret = globalShortcut.register(HOTKEY, () => {
-            console.log('Global hotkey triggered');
+        const success = globalShortcut.register(currentHotkey, () => {
+            console.log('Global hotkey triggered:', currentHotkey);
             if (mainWindow && !mainWindow.isDestroyed()) {
-                // Send toggle signal to renderer
-                // The renderer keeps track of state (Recording vs Idle)
-                // This implements "Toggle-to-Talk" behavior
                 mainWindow.webContents.send(IPC_CHANNELS.TOGGLE_RECORDING);
             }
         });
 
-        if (!ret) {
-            console.error('Registration failed for', HOTKEY);
-        } else {
-            console.log('Global shortcuts initialized:', HOTKEY);
+        if (!success) {
+            console.error('Registration failed for:', currentHotkey);
+            return false;
         }
+
+        console.log('Global shortcut registered:', currentHotkey);
+        return true;
     } catch (err) {
         console.error('Failed to register global shortcuts:', err);
+        return false;
     }
 }
 
-export function cleanupShortcuts() {
-    globalShortcut.unregisterAll();
+/**
+ * Update the hotkey to a new accelerator
+ * @param accelerator - Electron accelerator string (e.g., "Alt+Space")
+ * @returns true if successful, false if conflict/error
+ */
+export function updateHotkey(accelerator: string): boolean {
+    const previousHotkey = currentHotkey;
+    currentHotkey = accelerator;
+
+    const success = registerGlobalShortcuts();
+
+    if (!success) {
+        // Revert to previous hotkey on failure
+        currentHotkey = previousHotkey;
+        registerGlobalShortcuts();
+    }
+
+    return success;
 }
 
-// Deprecated: No longer needed but kept for signature compatibility if called elsewhere
-export function unregisterAllShortcuts() {
-    cleanupShortcuts();
+/**
+ * Get the current hotkey
+ */
+export function getCurrentHotkey(): string {
+    return currentHotkey;
+}
+
+export function cleanupShortcuts(): void {
+    globalShortcut.unregisterAll();
 }

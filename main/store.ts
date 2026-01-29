@@ -7,6 +7,7 @@ interface Schema {
     enrichmentMode: EnrichmentMode;
     apiKey: string;
     llmProvider: LLMProvider;
+    hotkey: string;
 }
 
 const schema = {
@@ -14,7 +15,8 @@ const schema = {
     whisperLanguage: { type: 'string', default: 'english' },
     enrichmentMode: { type: 'string', enum: ['none', 'clean', 'format', 'summarize', 'action', 'email', 'notes', 'commit', 'tweet', 'slack'], default: 'none' },
     apiKey: { type: 'string', default: '' },
-    llmProvider: { type: 'string', enum: ['openai', 'anthropic'], default: 'openai' }
+    llmProvider: { type: 'string', enum: ['openai', 'anthropic'], default: 'openai' },
+    hotkey: { type: 'string', default: 'Alt+Space' }
 } as const;
 
 // Store instance (lazy loaded)
@@ -41,7 +43,8 @@ export async function getAllSettings(): Promise<AppSettings> {
         whisperLanguage: s.get('whisperLanguage'),
         enrichmentMode: s.get('enrichmentMode'),
         apiKey: s.get('apiKey'),
-        llmProvider: s.get('llmProvider')
+        llmProvider: s.get('llmProvider'),
+        hotkey: s.get('hotkey')
     };
 }
 
@@ -49,3 +52,4 @@ export async function saveSetting(key: string, value: any) {
     const s = await initStore();
     s.set(key, value);
 }
+
