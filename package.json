@@ -13,7 +13,9 @@
     "build:win": "nextron build --win",
     "build:all": "nextron build --mac --win",
     "postinstall": "electron-builder install-app-deps",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:e2e": "echo \"E2E tests require Playwright setup\" && exit 0"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
@@ -23,13 +25,16 @@
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "electron": "^31.0.0",
     "electron-builder": "^24.0.0",
+    "jsdom": "^27.4.0",
     "next": "^14.2.0",
     "nextron": "^9.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
   }
 }

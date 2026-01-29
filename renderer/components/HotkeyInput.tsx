@@ -13,7 +13,10 @@ interface HotkeyInputProps {
 /**
  * Convert Electron accelerator to human-readable format
  */
-function formatHotkey(accelerator: string): string {
+/**
+ * Convert Electron accelerator to human-readable format
+ */
+export function formatHotkey(accelerator: string): string {
     if (!accelerator) return '';
 
     const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
@@ -30,7 +33,10 @@ function formatHotkey(accelerator: string): string {
 /**
  * Build Electron accelerator from keyboard event
  */
-function buildAccelerator(e: KeyboardEvent): string | null {
+/**
+ * Build Electron accelerator from keyboard event
+ */
+export function buildAccelerator(e: KeyboardEvent): string | null {
     const parts: string[] = [];
 
     // Modifiers
