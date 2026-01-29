@@ -8,6 +8,9 @@ import { pipeline, Pipeline } from '@huggingface/transformers';
 let transcriber: Pipeline | null = null;
 let isLoading = false;
 let loadError: string | null = null;
+let lastGlobalProgress = 0;
+// Track download progress for multiple files
+const progressTracker = new Map<string, { progress: number; weight: number }>();
 
 /**
  * Initialize the Whisper model (lazy load on first use)
@@ -28,6 +31,8 @@ export async function initializeWhisper(
 
     isLoading = true;
     loadError = null;
+    lastGlobalProgress = 0;
+    progressTracker.clear();
 
     try {
         onProgress?.(0, 'Loading speech model...');
@@ -37,9 +42,56 @@ export async function initializeWhisper(
             'automatic-speech-recognition',
             'Xenova/whisper-small',  // Best accuracy, ~460MB, supports 99 languages
             {
-                progress_callback: (progress: { progress?: number; status?: string }) => {
-                    if (progress.progress !== undefined) {
-                        onProgress?.(progress.progress, progress.status || 'Loading...');
+                progress_callback: (data: { status: string; file?: string; progress?: number }) => {
+                    // Track progress for each file to calculate a smooth global percentage
+                    // Weights are approximate based on file size
+                    const fileWeights: Record<string, number> = {
+                        'onnx': 0.90, // The main model file (largest)
+                        'json': 0.02, // Config files
+                        'txt': 0.01   // Vocab/merges
+                    };
+
+                    if (data.status === 'progress' && data.file && data.progress !== undefined) {
+                        const ext = data.file.split('.').pop() || 'other';
+                        // Find matching weight or default
+                        const weight = Object.entries(fileWeights).find(([key]) => ext.includes(key))?.[1] || 0.01;
+
+                        // Store file progress (using closure variable if outside, but we need scope here)
+                        // We attach a static map to the function to persist across callbacks if needed, 
+                        // but actually the callback is created once per pipeline call.
+                        // Let's use a module-level or closure-level map.
+                        if (!progressTracker.has(data.file)) {
+                            progressTracker.set(data.file, { progress: 0, weight });
+                        }
+
+                        const item = progressTracker.get(data.file)!;
+                        item.progress = data.progress;
+
+                        // Calculate total weighted progress
+                        // We normalize by assuming the main model + some config files ~ 1.0 total weight
+                        // It's heuristic but much smoother than jumping 0-100 for each file.
+                        let totalWeightedProgress = 0;
+                        let totalWeight = 0;
+
+                        progressTracker.forEach((val) => {
+                            totalWeightedProgress += (val.progress / 100) * val.weight;
+                            totalWeight += val.weight;
+                        });
+
+                        // Normalize to 0-100 range, capping at 0.99 to let final 'ready' step hit 100
+                        // (If we only have small files downloaded so far, we don't want to show 100%)
+                        // We assume total weight will eventually be around ~0.95-1.0
+                        const nominalTotalWeight = 1.0;
+                        const currentGlobalProgress = Math.min(
+                            Math.round((totalWeightedProgress / nominalTotalWeight) * 100),
+                            99
+                        );
+
+                        // Ensure monotonicity
+                        if (currentGlobalProgress > lastGlobalProgress) {
+                            lastGlobalProgress = currentGlobalProgress;
+                            onProgress?.(currentGlobalProgress, 'Loading Model...');
+                        }
                     }
                 },
             }

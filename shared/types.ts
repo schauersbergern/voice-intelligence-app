@@ -19,6 +19,10 @@ export const IPC_CHANNELS = {
     SET_ENRICHMENT_MODE: 'enrichment:set-mode',
     GET_ENRICHMENT_MODE: 'enrichment:get-mode',
     SET_LLM_PROVIDER: 'enrichment:set-provider',
+    GET_SETTINGS: 'settings:get-all',
+    SAVE_SETTING: 'settings:save-one',
+    TRIGGER_PASTE: 'automation:trigger-paste',
+    COPY_TO_CLIPBOARD: 'clipboard:copy',
 } as const;
 
 // ============================================================================
@@ -132,4 +136,33 @@ export interface ElectronAPI {
      * @returns Promise resolving with enriched transcription result
      */
     enrichTranscription: (text: string) => Promise<TranscriptionResult>;
+
+    /**
+     * Get all persisted settings.
+     */
+    getSettings: () => Promise<AppSettings>;
+
+    /**
+     * Save a setting value.
+     */
+    saveSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>;
+
+    /**
+     * Trigger global paste action (Cmd+V).
+     */
+    triggerPaste: () => Promise<void>;
+
+    /**
+     * Copy text to system clipboard.
+     * @param text - Text to copy
+     */
+    copyToClipboard: (text: string) => Promise<void>;
+}
+
+export interface AppSettings {
+    whisperMode: WhisperMode;
+    whisperLanguage: string;
+    enrichmentMode: EnrichmentMode;
+    apiKey: string;
+    llmProvider: LLMProvider;
 }

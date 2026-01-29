@@ -47,6 +47,18 @@ const api: ElectronAPI = {
 
     enrichTranscription: (text: string) =>
         ipcRenderer.invoke(IPC_CHANNELS.ENRICH_TRANSCRIPTION, text),
+
+    getSettings: () =>
+        ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS),
+
+    saveSetting: (key, value) =>
+        ipcRenderer.invoke(IPC_CHANNELS.SAVE_SETTING, key, value),
+
+    triggerPaste: () =>
+        ipcRenderer.invoke(IPC_CHANNELS.TRIGGER_PASTE),
+
+    copyToClipboard: (text: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.COPY_TO_CLIPBOARD, text),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

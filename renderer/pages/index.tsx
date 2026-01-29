@@ -4,7 +4,7 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { RecordButton } from '../components/RecordButton';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
 import { transcribeLocal, isModelReady, initializeWhisper } from '../lib/whisper-local';
-import type { TranscriptionResult, EnrichmentMode, LLMProvider, WhisperMode } from '../../shared/types';
+import type { TranscriptionResult, EnrichmentMode, WhisperMode } from '../../shared/types';
 
 export default function Home(): JSX.Element {
     const { state, error: recordError, duration, startRecording, stopRecording } = useAudioRecorder();
@@ -14,8 +14,6 @@ export default function Home(): JSX.Element {
     const [whisperMode, setWhisperModeState] = useState<WhisperMode>('api');
     const [whisperLanguage, setWhisperLanguage] = useState<string>('english');
     const [apiKey, setApiKeyState] = useState('');
-    const [llmApiKey, setLlmApiKeyState] = useState('');
-    const [llmProvider, setLlmProviderState] = useState<LLMProvider>('openai');
     const [enrichmentMode, setEnrichmentModeState] = useState<EnrichmentMode>('clean');
     const [showSettings, setShowSettings] = useState(false);
     const [hotkeyTriggered, setHotkeyTriggered] = useState(false);
@@ -27,8 +25,12 @@ export default function Home(): JSX.Element {
 
     useEffect(() => {
         if (window.electronAPI) {
-            window.electronAPI.getWhisperMode().then(setWhisperModeState).catch(() => { });
-            window.electronAPI.getEnrichmentMode().then(setEnrichmentModeState).catch(() => { });
+            window.electronAPI.getSettings().then((settings) => {
+                setWhisperModeState(settings.whisperMode);
+                setWhisperLanguage(settings.whisperLanguage);
+                setEnrichmentModeState(settings.enrichmentMode);
+                setApiKeyState(settings.apiKey);
+            }).catch(() => { });
         }
     }, []);
 
@@ -58,7 +60,7 @@ export default function Home(): JSX.Element {
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'c' && !window.getSelection()?.toString()) {
-                navigator.clipboard.writeText(displayText);
+                window.electronAPI?.copyToClipboard(displayText);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
@@ -74,6 +76,8 @@ export default function Home(): JSX.Element {
     const handleModeChange = async (mode: WhisperMode) => {
         setWhisperModeState(mode);
         window.electronAPI?.setWhisperMode(mode);
+        window.electronAPI?.saveSetting('whisperMode', mode);
+
         // Pre-load model if switching to local mode
         if (mode === 'local' && !isModelReady()) {
             setModelLoadingStatus('Loading Model... 0%');
@@ -88,24 +92,25 @@ export default function Home(): JSX.Element {
         }
     };
 
+    const handleLanguageChange = async (language: string) => {
+        setWhisperLanguage(language);
+        window.electronAPI?.saveSetting('whisperLanguage', language);
+    };
+
     const handleApiKeyChange = async (key: string) => {
         setApiKeyState(key);
-        if (key.trim()) window.electronAPI?.setApiKey(key);
+        // Unified key for everything
+        if (key.trim()) {
+            window.electronAPI?.setApiKey(key);
+            window.electronAPI?.setLLMProvider('openai', key);
+            window.electronAPI?.saveSetting('apiKey', key);
+        }
     };
 
     const handleEnrichmentModeChange = async (mode: EnrichmentMode) => {
         setEnrichmentModeState(mode);
         window.electronAPI?.setEnrichmentMode(mode);
-    };
-
-    const handleLlmProviderChange = async (provider: LLMProvider) => {
-        setLlmProviderState(provider);
-        if (llmApiKey.trim()) window.electronAPI?.setLLMProvider(provider, llmApiKey);
-    };
-
-    const handleLlmApiKeyChange = async (key: string) => {
-        setLlmApiKeyState(key);
-        if (key.trim()) window.electronAPI?.setLLMProvider(llmProvider, key);
+        window.electronAPI?.saveSetting('enrichmentMode', mode);
     };
 
     const handleStartRecording = useCallback(async () => {
@@ -128,8 +133,6 @@ export default function Home(): JSX.Element {
                 // Branch based on whisper mode
                 if (whisperMode === 'local') {
                     // Local mode: transcribe in renderer using WASM
-                    // Only show loading status during model download, not transcription
-                    // Pass selected language (null/undefined for 'auto')
                     rawText = await transcribeLocal(audioData, (progress, status) => {
                         // Only show download/loading status, not transcription status
                         if (status.toLowerCase().includes('load') || status.toLowerCase().includes('download') || progress < 100) {
@@ -144,22 +147,44 @@ export default function Home(): JSX.Element {
                     }
                     const result = await window.electronAPI.sendAudioForTranscription(audioData);
                     setTranscription(result);
+
+                    // Auto-Paste for API mode (Main process handles enrichment if needed)
+                    // The result is already enriched if configured.
+                    const finalText = result.wasEnriched ? result.enrichedText : result.text;
+                    if (finalText && finalText.trim()) {
+                        await window.electronAPI.copyToClipboard(finalText);
+                        await window.electronAPI.triggerPaste().catch(() => { });
+                    }
                     return;
                 }
 
-                // For local mode, apply enrichment via main process
+                // For LOCAL mode, we have rawText.
+                let finalResult: TranscriptionResult;
+
                 if (window.electronAPI && enrichmentMode !== 'none' && rawText.trim()) {
                     const enrichedResult = await window.electronAPI.enrichTranscription(rawText);
-                    setTranscription(enrichedResult);
+                    finalResult = enrichedResult;
                 } else {
-                    setTranscription({
+                    finalResult = {
                         text: rawText,
                         enrichedText: rawText,
                         wasEnriched: false,
                         duration: 0,
                         mode: 'local',
-                    });
+                    };
                 }
+
+                setTranscription(finalResult);
+
+                // Auto-Paste for Local mode
+                const finalText = finalResult.wasEnriched ? finalResult.enrichedText : finalResult.text;
+                if (finalText && finalText.trim()) {
+                    await window.electronAPI?.copyToClipboard(finalText);
+                    if (window.electronAPI) {
+                        await window.electronAPI.triggerPaste().catch(() => { });
+                    }
+                }
+
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Transcription failed');
                 setModelLoadingStatus(null);
@@ -167,7 +192,7 @@ export default function Home(): JSX.Element {
                 setTranscribing(false);
             }
         }
-    }, [stopRecording, whisperMode, enrichmentMode]);
+    }, [stopRecording, whisperMode, enrichmentMode, whisperLanguage]);
 
     const handleRecordClick = useCallback(async () => {
         if (state === 'recording') {
@@ -268,8 +293,8 @@ export default function Home(): JSX.Element {
                                     value={whisperMode}
                                     onChange={(e) => handleModeChange(e.target.value as 'local' | 'api')}
                                 >
-                                    <option value="api">☁️ OpenAI Whisper API</option>
                                     <option value="local">🔒 Local (Offline)</option>
+                                    <option value="api">☁️ OpenAI Whisper API</option>
                                 </select>
                             </div>
                             {whisperMode === 'local' && (
@@ -278,7 +303,7 @@ export default function Home(): JSX.Element {
                                     <select
                                         style={styles.select}
                                         value={whisperLanguage}
-                                        onChange={(e) => setWhisperLanguage(e.target.value)}
+                                        onChange={(e) => handleLanguageChange(e.target.value)}
                                     >
                                         <option value="english">🇺🇸 English</option>
                                         <option value="german">🇩🇪 German</option>
@@ -298,7 +323,8 @@ export default function Home(): JSX.Element {
                                     {modelLoadingStatus}
                                 </div>
                             )}
-                            {whisperMode === 'api' && (
+
+                            {(whisperMode === 'api' || enrichmentMode !== 'none') && (
                                 <div style={styles.settingRow}>
                                     <label style={styles.label}>API Key:</label>
                                     <input
@@ -308,6 +334,11 @@ export default function Home(): JSX.Element {
                                         value={apiKey}
                                         onChange={(e) => handleApiKeyChange(e.target.value)}
                                     />
+                                </div>
+                            )}
+                            {whisperMode === 'api' && !apiKey && (
+                                <div style={{ ...styles.settingRow, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    API Key required for Cloud Mode
                                 </div>
                             )}
                         </div>
@@ -333,30 +364,10 @@ export default function Home(): JSX.Element {
                                     <option value="slack">💬 Slack Message</option>
                                 </select>
                             </div>
-                            {enrichmentMode !== 'none' && (
-                                <>
-                                    <div style={styles.settingRow}>
-                                        <label style={styles.label}>LLM:</label>
-                                        <select
-                                            style={styles.select}
-                                            value={llmProvider}
-                                            onChange={(e) => handleLlmProviderChange(e.target.value as LLMProvider)}
-                                        >
-                                            <option value="openai">OpenAI (gpt-4o-mini)</option>
-                                            <option value="anthropic">Anthropic (claude-3-haiku)</option>
-                                        </select>
-                                    </div>
-                                    <div style={styles.settingRow}>
-                                        <label style={styles.label}>LLM Key:</label>
-                                        <input
-                                            type="password"
-                                            style={styles.input}
-                                            placeholder={llmProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-                                            value={llmApiKey}
-                                            onChange={(e) => handleLlmApiKeyChange(e.target.value)}
-                                        />
-                                    </div>
-                                </>
+                            {enrichmentMode !== 'none' && !apiKey && (
+                                <div style={{ ...styles.settingRow, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    API Key required for Enrichment
+                                </div>
                             )}
                         </div>
 

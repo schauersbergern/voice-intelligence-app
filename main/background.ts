@@ -1,10 +1,11 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard } from 'electron';
 import { IPC_CHANNELS, type WhisperMode, type EnrichmentMode, type LLMProvider } from '../shared/types';
 import { transcribe, setWhisperMode, getWhisperMode, setApiKey } from './whisper-handler';
 import { enrich, setEnrichmentMode, getEnrichmentMode, setLLMProvider } from './enrichment';
 import { setMainWindow } from './window-manager';
-import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts';
+import { initializeShortcuts, cleanupShortcuts } from './shortcuts';
+import { getAllSettings, saveSetting, initStore } from './store';
 
 const isDev = !app.isPackaged;
 
@@ -76,6 +77,25 @@ function registerIpcHandlers(): void {
             mode: 'local' as const,
         };
     });
+
+    // --- Automation Handlers ---
+    ipcMain.handle(IPC_CHANNELS.TRIGGER_PASTE, async () => {
+        const { triggerPaste } = require('./automation');
+        await triggerPaste();
+    });
+
+    // --- Persistence Handlers ---
+    ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, async () => {
+        return await getAllSettings();
+    });
+
+    ipcMain.handle(IPC_CHANNELS.SAVE_SETTING, async (_event, key: string, value: any) => {
+        await saveSetting(key, value);
+    });
+
+    ipcMain.handle(IPC_CHANNELS.COPY_TO_CLIPBOARD, async (_event, text: string) => {
+        clipboard.writeText(text);
+    });
 }
 
 // ============================================================================
@@ -125,14 +145,21 @@ function createWindow(): void {
 // App Lifecycle
 // ============================================================================
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    await initStore();
     registerIpcHandlers();
     createWindow();
-    registerGlobalShortcuts();
+
+    // Initialize global shortcuts (PTT)
+    const { getMainWindow } = require('./window-manager');
+    const win = getMainWindow();
+    if (win) {
+        initializeShortcuts(win);
+    }
 });
 
 app.on('will-quit', () => {
-    unregisterAllShortcuts();
+    cleanupShortcuts();
 });
 
 app.on('window-all-closed', () => {
