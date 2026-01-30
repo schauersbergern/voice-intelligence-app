@@ -122,8 +122,8 @@ export async function rebuildMenu(): Promise<void> {
             {
                 label: 'Quit',
                 click: () => {
-                    tray?.destroy();
-                    app.exit(0);
+                    // tray?.destroy(); // Let app.quit handle cleanup via will-quit/before-quit if needed
+                    app.quit();
                 }
             },
         );

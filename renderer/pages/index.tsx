@@ -179,6 +179,23 @@ export default function Home(): JSX.Element {
         window.electronAPI?.setRecordingState(true).catch(() => { });
     }, [startRecording, microphoneId]);
 
+
+
+    // Helper to process local transcription with UI yield
+    const processLocalTranscription = async (audioData: ArrayBuffer | Float32Array): Promise<{ rawText: string }> => {
+        // Yield to event loop to let React render "Processing..." state
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const rawText = await transcribeLocal(audioData, (progress, status) => {
+            if (status.toLowerCase().includes('load') || status.toLowerCase().includes('download') || progress < 100) {
+                setModelLoadingStatus(`Loading Model... ${Math.round(progress)}%`);
+            }
+        }, whisperLanguage === 'auto' ? undefined : whisperLanguage);
+
+        setModelLoadingStatus(null);
+        return { rawText };
+    };
+
     const handleStopRecording = useCallback(async () => {
         setError(null);
         const audioData = await stopRecording();
@@ -191,14 +208,9 @@ export default function Home(): JSX.Element {
 
                 // Branch based on whisper mode
                 if (whisperMode === 'local') {
-                    // Local mode: transcribe in renderer using WASM
-                    rawText = await transcribeLocal(audioData, (progress, status) => {
-                        // Only show download/loading status, not transcription status
-                        if (status.toLowerCase().includes('load') || status.toLowerCase().includes('download') || progress < 100) {
-                            setModelLoadingStatus(`Loading Model... ${Math.round(progress)}%`);
-                        }
-                    }, whisperLanguage === 'auto' ? undefined : whisperLanguage);
-                    setModelLoadingStatus(null);
+                    // Local mode: use helper to ensure UI updates first
+                    const result = await processLocalTranscription(audioData);
+                    rawText = result.rawText;
                 } else {
                     // API mode: send to main process
                     if (!window.electronAPI) {
@@ -214,6 +226,7 @@ export default function Home(): JSX.Element {
                         await window.electronAPI.copyToClipboard(finalText);
                         await window.electronAPI.triggerPaste().catch(() => { });
                     }
+                    setTranscribing(false);
                     return;
                 }
 
@@ -244,10 +257,10 @@ export default function Home(): JSX.Element {
                     }
                 }
 
+                setTranscribing(false);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Transcription failed');
                 setModelLoadingStatus(null);
-            } finally {
                 setTranscribing(false);
             }
         }

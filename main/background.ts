@@ -11,7 +11,10 @@ import { createTray, updateTrayIcon, rebuildMenu, updateAudioDevices } from './t
 const isDev = !app.isPackaged;
 
 // Recording state tracked in main process for hotkey coordination
+// Recording state tracked in main process for hotkey coordination
 let isRecording = false;
+// Track if the application is trying to quit
+let isQuitting = false;
 
 // ============================================================================
 // IPC Handlers
@@ -88,6 +91,7 @@ function registerIpcHandlers(): void {
         };
     });
 
+    // --- Automation Handlers ---
     // --- Automation Handlers ---
     ipcMain.handle(IPC_CHANNELS.TRIGGER_PASTE, async () => {
         const { triggerPaste } = require('./automation');
@@ -166,9 +170,13 @@ function createWindow(): void {
     });
 
     // Intercept close to hide instead of destroy (background operation)
+    // ONLY if we are not explicitly quitting the app
     mainWindow.on('close', (event) => {
-        event.preventDefault();
-        mainWindow.hide();
+        if (!isQuitting) {
+            event.preventDefault();
+            mainWindow.hide();
+        }
+        // If isQuitting is true, let default happen (close window -> app quit)
     });
 
     const url = isDev
@@ -222,6 +230,10 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
     cleanupShortcuts();
+});
+
+app.on('before-quit', () => {
+    isQuitting = true;
 });
 
 app.on('window-all-closed', () => {
