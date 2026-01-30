@@ -127,7 +127,7 @@ function createWindow(): void {
         minWidth: 320,
         minHeight: 450,
         maxWidth: 600,
-        maxHeight: 850,
+        maxHeight: 2050,
         resizable: true,
         center: true,
         title: 'Voice Intelligence',

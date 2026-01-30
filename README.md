@@ -6,6 +6,11 @@
 
 ![Voice Intelligence Demo](/docs/assets/demo.gif)
 
+> [!NOTE]
+> **Check out the new design!**
+>
+> ![Voice Intelligence Screenshot](/docs/assets/app-screenshot.png)
+
 ## ✨ Features
 
 - 🎙️ **Global Hotkey**: Press `Alt+Space` (default) to toggle recording from any app. (Press & release to start, press & release again to stop).
@@ -21,8 +26,12 @@
 
 ## 🚀 Quick Start
 
-1. **Download** the latest release (`.dmg`) and drag to Applications.
-2. **Launch** the app.
+1. **Install the Application**:
+   - If you have just built the app (see [Building](#building) below), navigate to the `dist` folder.
+   - **Apple Silicon (M1/M2/M3)**: Open `Voice Intelligence-1.0.0-arm64.dmg`.
+   - **Intel Mac**: Open `Voice Intelligence-1.0.0.dmg`.
+   - Drag the app to your `Applications` folder.
+2. **Launch** the app from Applications.
 3. **IMPORTANT: Enable Accessibility Permission**
    - The app uses accessibility features to paste text directly into your active application.
    - Go to **System Settings > Privacy & Security > Accessibility**.
