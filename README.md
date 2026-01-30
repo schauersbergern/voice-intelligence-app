@@ -1,15 +1,15 @@
 # Voice Intelligence
 
-> **Voice-to-text that just works.** Speak anywhere, paste everywhere.
-> 
-> *Desktop voice capture and AI-powered transcription for macOS.*
+**Voice-to-text that just works.** Speak anywhere, paste everywhere.
+
+*Desktop voice capture and AI-powered transcription for macOS and Windows.*
 
 ![Voice Intelligence Demo](/docs/assets/demo.gif)
 
-> [!NOTE]
-> **Check out the new design!**
->
-> ![Voice Intelligence Screenshot](/docs/assets/app-screenshot.png)
+
+**Design:**
+
+![Voice Intelligence Screenshot](/docs/assets/app-screenshot.png)
 
 ## ✨ Features
 

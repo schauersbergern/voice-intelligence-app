@@ -26,7 +26,15 @@ function registerIpcHandlers(): void {
         // Step 1: Transcribe audio
         const transcriptionResult = await transcribe(Buffer.from(audioData));
 
-        // Step 2: Enrich transcription with LLM
+        // Step 2: Enrich transcription with LLM (only if text exists)
+        if (!transcriptionResult.text || !transcriptionResult.text.trim()) {
+            return {
+                ...transcriptionResult,
+                enrichedText: transcriptionResult.text,
+                wasEnriched: false,
+            };
+        }
+
         const { enrichedText, wasEnriched } = await enrich(transcriptionResult.text);
 
         return {
@@ -127,7 +135,7 @@ function createWindow(): void {
         minWidth: 320,
         minHeight: 450,
         maxWidth: 600,
-        maxHeight: 2050,
+        maxHeight: 850,
         resizable: true,
         center: true,
         title: 'Voice Intelligence',
@@ -142,6 +150,20 @@ function createWindow(): void {
 
     // Store reference in window manager
     setMainWindow(mainWindow);
+
+    // Filter out annoying internal DevTools errors
+    mainWindow.webContents.on('console-message', (event, _level, message) => {
+        const ignoredMessages = [
+            'Autofill.enable',
+            'Autofill.setAddresses',
+            'Request Autofill.enable failed',
+            'Request Autofill.setAddresses failed',
+        ];
+
+        if (ignoredMessages.some(msg => message.includes(msg))) {
+            event.preventDefault();
+        }
+    });
 
     // Intercept close to hide instead of destroy (background operation)
     mainWindow.on('close', (event) => {
