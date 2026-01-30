@@ -6,11 +6,6 @@
 
 ![Voice Intelligence Demo](/docs/assets/demo.gif)
 
-
-**Design:**
-
-![Voice Intelligence Screenshot](/docs/assets/app-screenshot.png)
-
 ## ✨ Features
 
 - 🎙️ **Global Hotkey**: Press `Alt+Space` (default) to toggle recording from any app. (Press & release to start, press & release again to stop).
