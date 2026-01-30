@@ -79,8 +79,16 @@ flowchart LR
 
 ## 💡 Design Decisions
 
-### Why Local Whisper?
-Privacy is paramount. Using WebAssembly-based Whisper means your voice data never has to leave your machine. It works completely offline and has zero latency overhead from network requests.
+### 🔒 Local Transcription Mechanism
+
+We use **Transformers.js** running directly in the Electron renderer process, utilizing a quantized **Xenova/whisper-small** model via **ONNX Runtime Web (WASM)**.
+
+- **Zero Setup**: No Python, PyTorch, or C++ compilation required. Works "out of the box" like a standard JS library.
+- **Privacy First**: Audio data is processed entirely on-device. Works perfectly offline.
+- **Performance**: SIMD-accelerated WASM inference provides near-native speeds.
+- **Efficiency**: Quantized models (~400MB) balance high accuracy with low memory usage.
+
+*Alternatives considered: Native Node addons (complex distribution) and Python shelling (large install size).*
 
 ### Why Toggle Recording?
 We use a global hotkey toggle (Press & Release) instead of hold-to-talk. This ensures reliability across different operating systems and preventing issues with key-up events getting swallowed by other applications. It also allows for longer dictations without finger fatigue.
@@ -129,20 +137,90 @@ npm run build:mac
 npm run build:win
 ```
 
+### Development Methodology: AI-Assisted Structured Development
+
+This project was built using a systematic AI-assisted workflow with Claude Code, designed for quality and traceability.
+
+#### 1. Project Foundation
+- Created `CLAUDE.md` as the project brain — loaded at every AI session for consistent context
+- Established architecture, code standards, and guardrails upfront
+
+#### 2. Mission-Based Development
+The entire project was divided into 12 discrete missions, each with:
+- **Spec file** (`docs/specs/mission-X-*.md`) — Requirements, acceptance criteria, technical notes
+- **Plan file** (`docs/plans/mission-X-plan.md`) — Implementation approach, generated from spec
+- **Review step** — Plan reviewed via `/project:review-plan` command before implementation
+
+#### 3. Workflow Per Mission
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Read Spec  │ ──▶ │ Create Plan │ ──▶ │ Review Plan │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                               │
+       ┌───────────────────────────────────────┘
+       ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Implement  │ ──▶ │ Code Review │ ──▶ │   Test &    │
+│             │     │  & Bugfix   │     │   Commit    │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+#### 4. Quality Gates
+- **Pre-implementation**: Plan reviewed against spec for completeness
+- **Post-implementation**: Manual code review, testing, and bugfixing
+- **Per-commit**: Only working, tested code committed
+
+#### 5. Mission Overview
+
+| Mission | Focus |
+|---------|-------|
+| 1 | Foundation — Electron + Next.js setup |
+| 2 | IPC Layer — Secure main ↔ renderer communication |
+| 3 | Audio Capture — Microphone recording, WAV encoding |
+| 4 | Whisper Integration — Local (WASM) + API transcription |
+| 5 | Global Hotkey — Push-to-talk activation |
+| 6 | LLM Enrichment — Text processing pipeline |
+| 7 | UI Polish — Visual refinements |
+| 8 | Packaging — Production build, DMG |
+| 9 | Polish & Differentiation — Bug fixes, wow features |
+| 10 | User Requirements — UX optimizations |
+| 11 | Menu Bar & Hotkey — System integration, volume indicator |
+| 12 | Final Sprint — Tests, README, submission prep |
+
+### Technical Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Desktop Framework | Electron + Next.js (Nextron) | Mature ecosystem, reliable audio APIs, fast development |
+| Local Transcription | Whisper WebAssembly | Zero user setup, works offline, no native module issues |
+| Cloud Transcription | OpenAI Whisper API | High accuracy, simple integration |
+| LLM Enrichment | GPT-4o-mini | Fast, cost-effective, good quality |
+| Push-to-Talk UX | Hold-to-record (Option+Space) | Faster than toggle, natural interaction |
+| Auto-Paste | Simulate Cmd+V after transcription | Seamless workflow, zero clicks |
+| Volume Indicator | Circular ring with glow | Visual feedback, "wow" factor |
+
+### Why This Approach?
+
+1. **Traceability** — Every feature maps to a spec, every spec to a commit
+2. **Quality** — Review gates catch issues before implementation
+3. **Maintainability** — Clear documentation for future development
+4. **Reproducibility** — Same workflow can build similar apps consistently
+
 ## 📂 Project Structure
 
 ```
 voice-intelligence-app/
 ├── main/                   # Electron Main Process
-│   ├── background.ts       # Entry point
-│   ├── whisper-handler.ts  # Transcription logic
-│   └── tray.ts             # Menu bar integration
+│   ├── background.ts       # Application Entry Point
+│   ├── automation.ts       # Auto-Paste Logic
+│   ├── enrichment.ts       # LLM Integration
+│   └── tray.ts             # System Tray Logic
 ├── renderer/               # Next.js Renderer Process
 │   ├── pages/              # UI Pages
-│   ├── components/         # React Components
-│   └── hooks/              # Custom Hooks (useAudioRecorder)
-├── shared/                 # Shared Types & constants
-└── tests/                  # Vitest Test Suite
+│   ├── components/         # React Components (VolumeRing, etc.)
+│   └── hooks/              # Custom Hooks (useAudioRecorder, etc.)
+├── shared/                 # Shared Types & Constants
+└── tests/                  # Test Suite (Unit + E2E)
 ```
 
 ## 📄 License
