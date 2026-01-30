@@ -9,10 +9,13 @@ macOS desktop app that captures voice input, transcribes it (local Whisper or Op
 ## Quick Commands
 
 ```bash
-npm run dev      # Start development mode (Electron + Next.js hot reload)
-npm run build    # Package for distribution
+npm run dev       # Start development mode (Electron + Next.js hot reload)
+npm run build     # Package for distribution
 npm run build:mac # Build macOS DMG
-npx tsc --noEmit # Type check without emitting
+npx tsc --noEmit  # Type check without emitting
+npm test          # Run all tests (unit + integration)
+npm run test:unit # Run unit tests only
+npm run test:e2e  # Run Playwright e2e tests
 ```
 
 ## Architecture
@@ -90,10 +93,13 @@ IPC_CHANNELS.TRIGGER_PASTE        // Cmd+V automation
 | main/enrichment.ts | LLM processing (OpenAI/Anthropic) |
 | main/enrichment-prompts.ts | System prompts per enrichment mode |
 | main/store.ts | Settings persistence via electron-store |
-| main/shortcuts.ts | Global hotkey registration (Cmd+Shift+Space) |
+| main/shortcuts.ts | Global hotkey registration (default: Alt+Space) |
 | main/window-manager.ts | Window visibility and focus management |
+| main/tray.ts | Menu bar icon and context menu |
+| main/automation.ts | Auto-paste via AppleScript (requires Accessibility permission) |
 | renderer/lib/whisper-local.ts | WASM Whisper via @huggingface/transformers |
 | renderer/hooks/useAudioRecorder.ts | Microphone capture with Web Audio API |
+| renderer/hooks/useAudioDevices.ts | Enumerate available microphones |
 | renderer/pages/index.tsx | Main UI orchestrating record/transcribe/display |
 | shared/types.ts | All IPC channels, ElectronAPI interface, domain types |
 
@@ -105,6 +111,8 @@ Settings stored via `electron-store` in `main/store.ts`:
 - `enrichmentMode`: 'none' | 'clean' | 'format' | 'summarize' | 'action' | 'email' | 'notes' | 'commit' | 'tweet' | 'slack'
 - `apiKey`: OpenAI API key
 - `llmProvider`: 'openai' | 'anthropic'
+- `hotkey`: Electron accelerator string (default: 'Alt+Space')
+- `microphoneId`: Selected audio input device ID
 
 ## Development Tips
 
@@ -116,14 +124,27 @@ Settings stored via `electron-store` in `main/store.ts`:
 - "electronAPI is not defined" → Check preload.ts is loading (webPreferences.preload path)
 - Model loading slow on first run → WASM model (~460MB) downloads and caches automatically
 - Audio not recording → Check macOS microphone permissions
+- Auto-paste not working → Grant Accessibility permission in System Settings > Privacy & Security > Accessibility
 
 **Debugging:**
 - Main process logs → Terminal running `npm run dev`
 - Renderer logs → DevTools console (opens automatically in dev)
 
+## Testing
+
+Tests use Vitest (unit/integration) and Playwright (e2e):
+```
+tests/
+├── unit/          # Pure function tests (audio-utils, settings)
+├── integration/   # IPC and pipeline tests with mocks
+└── e2e/           # Full app launch tests via Playwright
+```
+
+Run a single test file: `npx vitest run tests/unit/audio-utils.test.ts`
+
 ## Development Workflow
 
-Missions in `docs/specs/` define incremental feature development. Missions 1-4 are complete (foundation, IPC, audio capture, Whisper). See `docs/PROMPTS.md` for prompt playbook.
+Missions in `docs/specs/` define incremental feature development. See `docs/PROMPTS.md` for prompt playbook.
 
 ## Session Notes
 

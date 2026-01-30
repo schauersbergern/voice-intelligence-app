@@ -145,6 +145,93 @@ Add system menu bar integration, make the hotkey configurable, and ensure robust
 
 ---
 
+### R-010: Live Volume Indicator (Circular Ring with Wow Effect)
+
+**Description**: Visual feedback showing microphone input level in real-time. A circular ring around the Record button that responds to voice volume.
+
+**Visual Design**:
+```
+        Idle                    Speaking (low)           Speaking (loud)
+     
+     ╭──────╮                    ╭──────╮                  ╭──────╮
+   ╱        ╲                  ╱ ░░░░░░ ╲                ╱ ████████ ╲
+  │  ⏺ Rec  │                │  ⏺ Rec  │              │  ⏺ Rec  │
+   ╲        ╱                  ╲        ╱                ╲ ████████ ╱
+     ╰──────╯                    ╰──────╯                  ╰──────╯
+   
+   No ring                    Ring partially lit         Ring fully lit + glow
+```
+
+**Wow Effects**:
+- Ring color shifts from blue → purple → pink as volume increases
+- Subtle glow/bloom effect at high volume
+- Smooth animation (60fps) with easing
+- Ring "breathes" slightly even at idle when recording
+- Particles or sparkles at peak volume (optional, if time permits)
+
+**Technical Implementation**:
+```typescript
+// AudioContext analyser for volume detection
+const analyser = audioContext.createAnalyser();
+analyser.fftSize = 256;
+source.connect(analyser);
+
+const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+function getVolume(): number {
+  analyser.getByteFrequencyData(dataArray);
+  const sum = dataArray.reduce((a, b) => a + b, 0);
+  return Math.min(sum / (dataArray.length * 128), 1); // 0 to 1
+}
+
+// Update loop at 60fps
+useEffect(() => {
+  let animationId: number;
+  function update() {
+    if (isRecording) {
+      setVolume(getVolume());
+      animationId = requestAnimationFrame(update);
+    }
+  }
+  if (isRecording) update();
+  return () => cancelAnimationFrame(animationId);
+}, [isRecording]);
+```
+
+**CSS/Styling Approach**:
+```css
+.volume-ring {
+  /* Conic gradient for circular progress */
+  background: conic-gradient(
+    var(--ring-color) calc(var(--volume) * 360deg),
+    transparent calc(var(--volume) * 360deg)
+  );
+  
+  /* Glow effect */
+  filter: drop-shadow(0 0 calc(var(--volume) * 20px) var(--ring-color));
+  
+  /* Smooth transitions */
+  transition: filter 0.1s ease-out;
+}
+
+/* Color shift based on volume */
+--ring-color: hsl(calc(240 - var(--volume) * 60), 80%, 60%);
+/* 240 = blue, 180 = cyan, at full volume shifts toward purple/pink */
+```
+
+**Acceptance Criteria**:
+- [x] Ring appears around Record button when recording starts
+- [x] Ring fill level (0-100%) corresponds to microphone volume
+- [x] Ring color shifts from blue → purple as volume increases
+- [x] Glow effect intensifies at higher volumes
+- [x] Animation is smooth (60fps, no jank)
+- [x] Ring has subtle "breathing" animation even at silence
+- [x] Volume detection uses AudioContext AnalyserNode
+- [x] No performance impact on transcription
+- [x] Ring disappears or resets when recording stops
+
+---
+
 ### R-009: Microphone Input Selector
 
 **Description**: Allow user to choose which microphone to use for recording. Show in both menu bar and settings.
@@ -208,7 +295,9 @@ const stream = await navigator.mediaDevices.getUserMedia({
 - `renderer/pages/settings.tsx` - Add hotkey configuration UI + microphone selector
 - `renderer/components/HotkeyInput.tsx` - New component for capturing hotkey
 - `renderer/components/MicrophoneSelector.tsx` - New component for mic dropdown
+- `renderer/components/VolumeRing.tsx` - Circular volume indicator with glow effect
 - `renderer/hooks/useAudioDevices.ts` - Hook to list and monitor audio devices
+- `renderer/hooks/useVolumeAnalyser.ts` - Hook for real-time volume from AnalyserNode
 - `shared/types.ts` - Add types for settings and audio devices
 - `main/preload.ts` - Expose hotkey and audio device IPC
 
@@ -252,6 +341,12 @@ Store language preference, persist across restarts.
 - [x] New hotkey works immediately
 - [x] New microphone used for next recording
 - [x] Hotkey and microphone selection persist after restart
+- [x] **Volume ring appears when recording starts**
+- [x] **Ring responds to voice volume in real-time**
+- [x] **Ring color shifts blue → purple at higher volume**
+- [x] **Glow effect visible at loud volume**
+- [x] **Animation is smooth (no stuttering)**
+- [x] **Ring resets when recording stops**
 - [x] App works after system sleep/wake
 - [x] Unplugging selected mic falls back to default
 - [x] No errors after 30+ minutes of background operation

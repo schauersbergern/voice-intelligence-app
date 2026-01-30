@@ -6,12 +6,15 @@ import { TranscriptDisplay } from '../components/TranscriptDisplay';
 import { HotkeyInput } from '../components/HotkeyInput';
 import { MicrophoneSelector } from '../components/MicrophoneSelector';
 import { useAudioDevices } from '../hooks/useAudioDevices';
+import { VolumeRing } from '../components/VolumeRing';
+import { useVolumeAnalyser } from '../hooks/useVolumeAnalyser';
 import { transcribeLocal, isModelReady, initializeWhisper } from '../lib/whisper-local';
 import type { TranscriptionResult, EnrichmentMode, WhisperMode } from '../../shared/types';
 
 export default function Home(): JSX.Element {
-    const { state, error: recordError, duration, startRecording, stopRecording } = useAudioRecorder();
+    const { state, error: recordError, duration, startRecording, stopRecording, stream } = useAudioRecorder();
     const { selectedId: microphoneId } = useAudioDevices();
+    const volume = useVolumeAnalyser(stream, state === 'recording');
     const [transcription, setTranscription] = useState<TranscriptionResult | null>(null);
     const [transcribing, setTranscribing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -307,12 +310,14 @@ export default function Home(): JSX.Element {
 
                 {/* Record Button */}
                 <div style={styles.controlSection}>
-                    <RecordButton
-                        isRecording={isRecording}
-                        isProcessing={isProcessing}
-                        onClick={handleRecordClick}
-                        processingText={transcribing ? '✨ Processing...' : 'Processing...'}
-                    />
+                    <VolumeRing volume={volume} isRecording={isRecording}>
+                        <RecordButton
+                            isRecording={isRecording}
+                            isProcessing={isProcessing}
+                            onClick={handleRecordClick}
+                            processingText={transcribing ? '✨ Processing...' : 'Processing...'}
+                        />
+                    </VolumeRing>
                     <span style={styles.hint}>Press {formatHotkeyDisplay(hotkey)} to toggle</span>
                 </div>
 

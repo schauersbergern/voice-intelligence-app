@@ -7,6 +7,7 @@ interface UseAudioRecorderReturn {
     state: RecordingState;
     error: string | null;
     duration: number;
+    stream: MediaStream | null;
     startRecording: (deviceId?: string) => Promise<void>;
     stopRecording: () => Promise<ArrayBuffer | null>;
 }
@@ -21,6 +22,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     const [state, setState] = useState<RecordingState>('idle');
     const [error, setError] = useState<string | null>(null);
     const [duration, setDuration] = useState(0);
+    const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
 
     // Refs to persist across renders
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -53,6 +55,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             mediaStreamRef.current = stream;
+            setActiveStream(stream);
 
             // Create audio context (use device sample rate, we'll downsample later)
             const audioContext = new AudioContext();
@@ -130,6 +133,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
             if (mediaStreamRef.current) {
                 mediaStreamRef.current.getTracks().forEach(track => track.stop());
                 mediaStreamRef.current = null;
+                setActiveStream(null);
             }
 
             // Get sample rate before closing context
@@ -176,6 +180,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         state,
         error,
         duration,
+        stream: activeStream,
         startRecording,
         stopRecording,
     };
