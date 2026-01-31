@@ -7,6 +7,7 @@ import { setMainWindow, getMainWindow } from './window-manager';
 import { initializeShortcuts, cleanupShortcuts, updateHotkey, registerGlobalShortcuts } from './shortcuts';
 import { getAllSettings, saveSetting, initStore } from './store';
 import { createTray, updateTrayIcon, rebuildMenu, updateAudioDevices } from './tray';
+import { triggerPaste } from './automation';
 
 const isDev = !app.isPackaged;
 
@@ -92,10 +93,8 @@ function registerIpcHandlers(): void {
     });
 
     // --- Automation Handlers ---
-    // --- Automation Handlers ---
     ipcMain.handle(IPC_CHANNELS.TRIGGER_PASTE, async () => {
-        const { triggerPaste } = require('./automation');
-        await triggerPaste();
+        return await triggerPaste();
     });
 
     // --- Persistence Handlers ---

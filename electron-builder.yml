@@ -22,7 +22,7 @@ mac:
       arch:
         - arm64
         - x64
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
@@ -52,4 +52,5 @@ asar: true
 asarUnpack:
   - "**/*.node"
   - "**/node_modules/@kutalia/whisper-node-addon/**/*"
+  - "**/node_modules/@jitsi/robotjs/**/*"
   - "resources/models/**/*"

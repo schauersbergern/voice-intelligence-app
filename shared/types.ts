@@ -158,8 +158,9 @@ export interface ElectronAPI {
 
     /**
      * Trigger global paste action (Cmd+V).
+     * @returns Object with success status and optional error message
      */
-    triggerPaste: () => Promise<void>;
+    triggerPaste: () => Promise<{ success: boolean; error?: string }>;
 
     /**
      * Copy text to system clipboard.

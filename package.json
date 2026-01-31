@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "@jitsi/robotjs": "^0.6.21",
     "electron-serve": "^2.0.0",
     "electron-store": "^11.0.2",
     "react": "^18.3.0",
